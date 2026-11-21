@@ -1,0 +1,88 @@
+@let b = block();
+@let cam = camera();
+@let model = path();
+@let size = b.imageSize;
+<div class="cam" [style.--s]="cam.s" [style.--tx]="cam.tx" [style.--ty]="cam.ty">
+  <div class="world" [style.aspect-ratio]="worldAspect()">
+    <img [src]="b.image" alt="Landschaft mit Bohlenweg, Hügeln und einem Vulkan" draggable="false" />
+    <svg class="routes" [attr.viewBox]="viewBox()" aria-hidden="true">
+      <path class="route" [attr.d]="model.d" [attr.pathLength]="model.total" />
+      <path
+        class="route-done"
+        [attr.d]="model.d"
+        [attr.pathLength]="model.total"
+        [style.stroke-dasharray]="doneLength() + ' ' + model.total"
+        [style.opacity]="doneLength() < 1 ? 0 : 1"
+      />
+    </svg>
+
+    @for (station of stations(); track station.id; let i = $index) {
+      @let highlighted = b.highlight?.includes(station.id);
+      <button
+        type="button"
+        class="pin"
+        [class.flag]="station.summit"
+        [class.done]="i < step()"
+        [class.highlight]="highlighted"
+        [style.left.%]="station.at[0]"
+        [style.top.%]="station.at[1]"
+        [attr.aria-label]="'Station ' + (i + 1) + ': ' + station.title"
+        [attr.aria-current]="i === step() - 1 ? 'step' : null"
+        [attr.title]="station.title"
+        (click)="pick(i + 1)"
+      >
+        @if (station.summit) {
+          <svg viewBox="0 0 34 40" aria-hidden="true">
+            <line x1="5" y1="2" x2="5" y2="40" stroke="#2c2c2a" stroke-width="2.5" />
+            <path d="M5 3 L31 9 L5 16 Z" fill="#D85A30" />
+          </svg>
+        } @else {
+          {{ i + 1 }}
+        }
+      </button>
+    }
+
+    @if (b.secret; as secret) {
+      <button
+        type="button"
+        class="hut"
+        aria-label="Versteckte Station"
+        title="?"
+        [style.left.%]="secret.at[0]"
+        [style.top.%]="secret.at[1]"
+        (click)="openHut()"
+      >
+        <svg viewBox="0 0 22 22" aria-hidden="true">
+          <path d="M2 11 L11 3 L20 11 Z" fill="#993C1D" />
+          <rect x="5" y="11" width="12" height="9" fill="#F1EFE8" />
+          <rect x="9" y="14" width="4" height="6" fill="#5F5E5A" />
+        </svg>
+      </button>
+    }
+
+    <div class="walker" [style.left.%]="pct(walker()[0], size[0])" [style.top.%]="pct(walker()[1], size[1])"></div>
+  </div>
+</div>
+
+@if (card(); as c) {
+  <div class="card" [class.right]="cardOnRight()" [class.swap]="cardSwapping()" aria-live="polite">
+    <div class="year">{{ c.year }}</div>
+    <h1>{{ c.title }}</h1>
+    <div class="chips">
+      @for (tag of c.tags; track tag) {
+        <span>{{ tag }}</span>
+      }
+    </div>
+  </div>
+}
+
+<div class="bar">
+  <div class="dots" aria-hidden="true">
+    @for (dot of dots(); track dot) {
+      <span [class.on]="dot === step()"></span>
+    }
+  </div>
+  <button type="button" class="zoom" [class.hidden]="!showToggle()" [tabindex]="showToggle() ? 0 : -1" (click)="toggleOverview()">
+    {{ toggleLabel() }}
+  </button>
+</div>

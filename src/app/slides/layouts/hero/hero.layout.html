@@ -1,0 +1,26 @@
+@let b = block();
+<div class="text">
+  <p class="kicker">{{ b.kicker ?? 'Hallo, ich bin' }}</p>
+  <h1>{{ b.title }}</h1>
+  <p class="subtitle">{{ b.subtitle }}</p>
+  @if (b.location) {
+    <p class="location"><span class="material-symbols-outlined" aria-hidden="true">location_on</span>{{ b.location }}</p>
+  }
+</div>
+<div class="portrait">
+  @if (b.photoBack; as back) {
+    <button
+      type="button"
+      class="flipper"
+      [class.flipped]="flipped()"
+      [attr.aria-pressed]="flipped()"
+      aria-label="Porträt umdrehen"
+      (click)="flip()"
+    >
+      <span class="face front"><app-media [media]="b.photo" [eager]="true" /></span>
+      <span class="face back"><app-media [media]="back" /></span>
+    </button>
+  } @else {
+    <div class="flipper"><span class="face front"><app-media [media]="b.photo" [eager]="true" /></span></div>
+  }
+</div>

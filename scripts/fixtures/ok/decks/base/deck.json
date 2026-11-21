@@ -1,0 +1,6 @@
+{
+  "id": "base",
+  "title": "Base",
+  "durationMinutes": 7,
+  "slides": ["intro", { "id": "trail", "children": ["deep-two"] }, "shadow", { "id": "extra", "children": ["deep-two"] }]
+}

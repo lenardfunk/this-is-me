@@ -1,0 +1,49 @@
+@if (store.deck(); as deck) {
+  <app-stage [accent]="deck.company?.accent">
+    <header>
+      <h1>{{ heading() }}</h1>
+      <p class="for">
+        @if (deck.company; as company) {
+          für <strong>{{ company.name }}</strong>
+        } @else {
+          {{ deck.title }}
+        }
+      </p>
+    </header>
+
+    <nav class="grid" aria-label="Themen">
+      @for (tile of tiles(); track tile.slide.id) {
+        <button
+          type="button"
+          appHubTile
+          class="tile"
+          [class.md]="tile.size === 'md'"
+          [class.wide]="tile.size === 'wide'"
+          [class.lg]="tile.size === 'lg'"
+          [class.has-image]="!!tile.image || !!tile.journey"
+          [style.view-transition-name]="'slide-' + tile.slide.id"
+          (click)="open(tile)"
+        >
+          @if (tile.journey; as j) {
+            <img class="bg" style="object-position: 50% 100%" [src]="j.image" alt="" draggable="false" />
+            <svg class="bg route" [attr.viewBox]="j.viewBox" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+              <path [attr.d]="j.d" />
+            </svg>
+          } @else if (tile.image) {
+            <img class="bg" [src]="tile.image" alt="" draggable="false" />
+          }
+          <span class="label">
+            @if (tile.icon) {
+              <span class="material-symbols-outlined" aria-hidden="true">{{ tile.icon }}</span>
+            }
+            <span class="text">{{ tile.label }}</span>
+          </span>
+        </button>
+      }
+    </nav>
+
+    <p class="hint">Enter oder → startet · Pfeiltasten wählen eine Kachel · ? Tastaturhilfe</p>
+  </app-stage>
+} @else {
+  <app-deck-status [status]="store.status()" [deckId]="deckId()" />
+}

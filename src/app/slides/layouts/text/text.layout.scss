@@ -1,0 +1,53 @@
+@use '../../../styles/slide' as s;
+
+:host {
+  @include s.slide-root;
+  display: flex;
+  align-items: center;
+  padding: 0 160px;
+}
+
+.column {
+  width: 1280px;
+}
+
+.kicker {
+  @include s.kicker;
+  margin: 0 0 20px;
+}
+
+h1 {
+  @include s.slide-title(84px);
+}
+
+.body {
+  margin-top: 56px;
+  font: 400 40px/1.4 var(--font-sans);
+
+  ::ng-deep {
+    p {
+      margin: 0 0 24px;
+    }
+    ul,
+    ol {
+      margin: 0;
+      padding-left: 1.1em;
+    }
+    li {
+      margin-bottom: 20px;
+      padding-left: 6px;
+      &::marker {
+        color: var(--accent);
+      }
+    }
+    strong {
+      font-weight: 600;
+    }
+    code {
+      font: 500 0.85em ui-monospace, 'Cascadia Code', monospace;
+      padding: 2px 10px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+    }
+  }
+}

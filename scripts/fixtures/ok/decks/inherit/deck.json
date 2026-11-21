@@ -1,0 +1,10 @@
+{
+  "id": "inherit",
+  "extends": "base",
+  "unlisted": true,
+  "company": { "name": "ACME", "accent": "#0F6E56" },
+  "overrides": {
+    "intro": { "kicker": null, "tile": { "label": "Hi" } },
+    "trail": { "highlight": ["s2", "s3"] }
+  }
+}

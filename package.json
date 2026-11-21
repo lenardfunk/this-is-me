@@ -1,0 +1,45 @@
+{
+  "name": "this-is-me",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "ng": "ng",
+    "content": "node scripts/build-content.ts",
+    "content:watch": "node scripts/build-content.ts --watch",
+    "start": "npm run content && concurrently -k -n content,ng \"npm:content:watch\" \"ng serve\"",
+    "build": "npm run content && ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "test:content": "node --test scripts/"
+  },
+  "private": true,
+  "packageManager": "npm@11.20.0",
+  "dependencies": {
+    "@angular/cdk": "^22.3.0",
+    "@angular/common": "^22.3.0",
+    "@angular/compiler": "^22.3.0",
+    "@angular/core": "^22.3.0",
+    "@angular/forms": "^22.3.0",
+    "@angular/material": "^22.3.0",
+    "@angular/platform-browser": "^22.3.0",
+    "@angular/router": "^22.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "marked": "^18.2.1",
+    "material-symbols": "^0.49.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.3.0",
+    "@angular/cli": "^22.3.0",
+    "@angular/compiler-cli": "^22.3.0",
+    "concurrently": "^10.0.7",
+    "gray-matter": "^4.0.3",
+    "jsdom": "^31.0.0",
+    "prettier": "^3.8.1",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.0"
+  }
+}

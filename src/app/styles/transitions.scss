@@ -1,0 +1,74 @@
+/*
+ * View transitions.
+ * - slide ↔ slide:  crossfade + small horizontal shift in navigation direction
+ *                   (html[data-nav='slides'], html[data-dir='fwd'|'back'])
+ * - hub ↔ slide:    browser default morph of the elements sharing a view-transition-name
+ */
+@keyframes slide-out-fwd {
+  to {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+}
+@keyframes slide-in-fwd {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+}
+@keyframes slide-out-back {
+  to {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+}
+@keyframes slide-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+}
+
+html[data-nav='slides'] {
+  // Old and new slide share ONE name, so the browser treats them as a pair and cross-fades them
+  // additively (no dark dip, no double-moving backdrop). The inline per-slide names are only
+  // needed for the hub morph.
+  app-slide-host {
+    view-transition-name: slide !important;
+  }
+
+  // The letterbox/background is identical on both sides: keep it static.
+  &::view-transition-old(root),
+  &::view-transition-new(root) {
+    animation: none;
+  }
+
+  &::view-transition-old(slide) {
+    animation: 320ms ease both slide-out-fwd;
+  }
+  &::view-transition-new(slide) {
+    animation: 320ms ease both slide-in-fwd;
+  }
+  &[data-dir='back']::view-transition-old(slide) {
+    animation-name: slide-out-back;
+  }
+  &[data-dir='back']::view-transition-new(slide) {
+    animation-name: slide-in-back;
+  }
+}
+
+html[data-nav='hub'] {
+  &::view-transition-group(*) {
+    animation-duration: 450ms;
+    animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms !important;
+    animation-delay: 0s !important;
+  }
+}

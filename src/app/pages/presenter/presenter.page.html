@@ -1,0 +1,142 @@
+@if (store.deck(); as deck) {
+  <div class="layout">
+    <section class="main">
+      <div class="current">
+        <app-stage [accent]="deck.company?.accent" [blackout]="store.blackout()">
+          @if (block(); as b) {
+            <app-slide-host [block]="b" [step]="store.currentStep()" [interactive]="false" [named]="false" inert />
+          }
+        </app-stage>
+      </div>
+
+      <div class="status">
+        <div class="where">
+          <span class="step">{{ stepLabel() }}</span>
+          <span class="counter">{{ slideCounter() }}</span>
+        </div>
+        <div class="controls">
+          <button mat-icon-button matTooltip="Zurück (←)" aria-label="Zurück" (click)="store.prev()">
+            <mat-icon fontSet="material-symbols-outlined">arrow_back</mat-icon>
+          </button>
+          <button mat-icon-button matTooltip="Weiter (→)" aria-label="Weiter" (click)="store.next()">
+            <mat-icon fontSet="material-symbols-outlined">arrow_forward</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            [matTooltip]="store.blackout() ? 'Abdunkeln beenden (B)' : 'Abdunkeln (B)'"
+            aria-label="Abdunkeln"
+            [attr.aria-pressed]="store.blackout()"
+            (click)="store.toggleBlackout()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">{{ store.blackout() ? 'visibility' : 'visibility_off' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <article class="notes" aria-label="Sprechernotizen">
+        @if (block()?.notesHtml; as notes) {
+          <div class="notes-body" [innerHTML]="notes"></div>
+        } @else {
+          <p class="empty">Keine Notizen für diese Folie.</p>
+        }
+      </article>
+    </section>
+
+    <aside>
+      <section class="card timer" [attr.data-state]="timerState()">
+        <div class="timer-head">
+          <span class="label">Zeit</span>
+          <span class="target">Ziel {{ deck.durationMinutes }} min</span>
+        </div>
+        <div class="time" aria-live="off">{{ elapsedLabel() }}</div>
+        <mat-progress-bar mode="determinate" [value]="timerRatio()" />
+        <div class="timer-actions">
+          <button mat-stroked-button (click)="toggleTimer()">
+            <mat-icon fontSet="material-symbols-outlined">{{ running() ? 'pause' : 'play_arrow' }}</mat-icon>
+            {{ running() ? 'Pause' : started() ? 'Weiter' : 'Start' }}
+          </button>
+          <button mat-button (click)="resetTimer()">
+            <mat-icon fontSet="material-symbols-outlined">restart_alt</mat-icon>
+            Zurücksetzen
+          </button>
+        </div>
+        @if (!started()) {
+          <p class="note">Startet automatisch mit dem ersten Schritt.</p>
+        }
+      </section>
+
+      <section class="card next">
+        <span class="label">Als Nächstes</span>
+        @if (store.nextBlock(); as next) {
+          <div class="preview">
+            <app-stage [accent]="deck.company?.accent">
+              <app-slide-host [block]="next" [step]="store.nextStep()" [interactive]="false" [named]="false" inert />
+            </app-stage>
+          </div>
+          <p class="next-title">{{ next.title }}</p>
+        } @else {
+          <p class="note">Ende der Präsentation.</p>
+        }
+      </section>
+
+      <section class="card dives">
+        <span class="label">Vertiefungen</span>
+        @if (slide(); as s) {
+          @if (s.children.length) {
+            <ul>
+              @for (child of s.children; track child.id; let i = $index) {
+                <li>
+                  <button mat-button [class.active]="isDeepDiveActive(i)" (click)="store.goToSub(i)">
+                    <mat-icon fontSet="material-symbols-outlined">arrow_downward</mat-icon>
+                    {{ child.title }}
+                  </button>
+                </li>
+              }
+            </ul>
+            @if (inDeepDive()) {
+              <button mat-stroked-button (click)="closeDeepDive()">
+                <mat-icon fontSet="material-symbols-outlined">arrow_upward</mat-icon>
+                Zurück zur Hauptfolie
+              </button>
+            }
+          } @else {
+            <p class="note">Keine Vertiefungen auf dieser Folie.</p>
+          }
+        }
+      </section>
+
+      <section class="card progress">
+        <span class="label">Fortschritt</span>
+        <mat-progress-bar mode="determinate" [value]="store.progress() * 100" />
+        <ol class="segments">
+          @for (s of deck.slides; track s.id; let i = $index) {
+            <li>
+              <button
+                type="button"
+                [class.current]="isCurrent(i)"
+                [class.done]="i < store.position().slide"
+                [matTooltip]="s.title"
+                [attr.aria-label]="'Zu Folie ' + (i + 1) + ': ' + s.title"
+                [attr.aria-current]="isCurrent(i) ? 'step' : null"
+                (click)="store.goTo(i)"
+              ></button>
+            </li>
+          }
+        </ol>
+      </section>
+    </aside>
+  </div>
+
+  @if (showHint()) {
+    <div class="hint" role="dialog" aria-modal="true" aria-labelledby="hint-title">
+      <div class="hint-card">
+        <mat-icon fontSet="material-symbols-outlined">screen_share</mat-icon>
+        <h2 id="hint-title">Teile im Call nur das Präsentationsfenster.</h2>
+        <p>Dieses Fenster mit Notizen und Timer bleibt privat. Beide Fenster sind synchron – du kannst hier und dort navigieren.</p>
+        <button mat-flat-button (click)="dismissHint()">Verstanden</button>
+      </div>
+    </div>
+  }
+} @else {
+  <app-deck-status [status]="store.status()" [deckId]="deckId()" />
+}

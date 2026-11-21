@@ -1,0 +1,40 @@
+:root {
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --ink: #1f1e1b;
+  --muted: #6b6a64;
+  --line: rgba(31, 30, 27, 0.12);
+  --accent: #534ab7;
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, white);
+  --accent-ink: color-mix(in srgb, var(--accent) 80%, black);
+  --font-serif: 'Fraunces Variable', Georgia, serif;
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --radius: 16px;
+}
+
+/* Registered properties: lets the journey camera animate through CSS transitions. */
+@property --s {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+@property --tx {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@property --ty {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/*
+ * `--accent-soft` / `--accent-ink` are derived from `--accent`. Custom properties derived on :root
+ * would not follow an accent that is overridden further down (company decks), so every scope that
+ * sets its own `--accent` (stage, presenter) also gets this class to re-derive them locally.
+ */
+.accent-scope {
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, white);
+  --accent-ink: color-mix(in srgb, var(--accent) 80%, black);
+}

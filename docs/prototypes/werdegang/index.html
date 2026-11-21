@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Werdegang-Prototyp</title>
+<style>
+  @property --s  { syntax: '<number>'; inherits: true; initial-value: 1; }
+  @property --tx { syntax: '<number>'; inherits: true; initial-value: 0; }
+  @property --ty { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+  :root {
+    --accent: #534AB7;
+    --ink: #1f1e1b;
+    --muted: #5f5e5a;
+    --dur: 1100ms;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #111;
+    font-family: system-ui, "Segoe UI", sans-serif;
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+  }
+
+  /* 16:9-Bühne, letterboxed – sieht bei jeder Fenstergröße gleich aus */
+  .stage {
+    position: relative;
+    width: min(100vw, calc(100vh * 16 / 9));
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: #9cc7ef;
+  }
+
+  /* Kamera = genau die Bühne; wird gezoomt/verschoben */
+  .cam {
+    position: absolute; inset: 0;
+    transform-origin: 0 0;
+    transform: translate(calc(var(--tx) * 1%), calc(var(--ty) * 1%)) scale(var(--s));
+    transition: --s var(--dur) cubic-bezier(.65,0,.35,1),
+                --tx var(--dur) cubic-bezier(.65,0,.35,1),
+                --ty var(--dur) cubic-bezier(.65,0,.35,1);
+  }
+
+  /* Foto füllt die Bühne in der Breite, unten verankert (oben wird Himmel abgeschnitten) */
+  .world {
+    position: absolute; left: 0; bottom: 0;
+    width: 100%;
+    aspect-ratio: 851 / 577;
+  }
+  .world img { width: 100%; height: 100%; display: block; user-select: none; }
+  .world svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+  .route { fill: none; stroke: rgba(255,255,255,.8); stroke-width: 2.5; stroke-dasharray: 1 8; stroke-linecap: round; }
+  .route-done { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; transition: opacity .3s; }
+
+  /* Elemente in der Welt behalten ihre Bildschirmgröße trotz Zoom */
+  .pin, .walker, .hut {
+    position: absolute;
+    transform: translate(-50%, -50%) scale(calc(1 / var(--s)));
+  }
+  .pin {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: #fff; border: 2px solid var(--accent); color: var(--accent);
+    font: 600 12px/22px system-ui; text-align: center;
+    transition: background .3s, color .3s;
+  }
+  .pin { cursor: pointer; }
+  .pin:hover { box-shadow: 0 0 0 4px rgba(255,255,255,.6); }
+  .pin.done { background: var(--accent); color: #fff; }
+  .pin.flag:hover { box-shadow: none; filter: drop-shadow(0 0 4px #fff); }
+
+  .zoom {
+    border: none; border-radius: 999px; padding: .4em 1em;
+    background: rgba(255,255,255,.88); color: var(--ink);
+    font: 500 13px system-ui; cursor: pointer;
+    transition: opacity .3s, background .2s;
+  }
+  .zoom:hover { background: #fff; }
+  .zoom[hidden] { display: block; opacity: 0; pointer-events: none; }
+  .pin.flag {
+    background: none; border: none; width: 34px; height: 40px;
+    transform-origin: 15% 100%;
+    transform: translate(-15%, -100%) scale(calc(1 / var(--s)));
+  }
+
+  .walker {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #D85A30; border: 3px solid #fff;
+    animation: pulse 1.8s infinite;
+    z-index: 2;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(216,90,48,.6); }
+    70%  { box-shadow: 0 0 0 12px rgba(216,90,48,0); }
+    100% { box-shadow: 0 0 0 0 rgba(216,90,48,0); }
+  }
+
+  .hut { width: 22px; height: 22px; cursor: pointer; opacity: .85; transition: opacity .2s; }
+  .hut:hover { opacity: 1; }
+
+  /* Overlay-UI (zoomt nicht mit) */
+  .card {
+    position: absolute; left: 3%; top: 5%;
+    min-width: 30%; max-width: 40%;
+    background: rgba(255, 255, 255, .92); border-radius: 16px; padding: 1.1em 1.4em;
+    font-size: clamp(12px, 1.4vw, 20px);
+    transition: opacity .35s, translate .35s;
+  }
+  .card.right { left: auto; right: 3%; }
+  .card.swap { opacity: 0; translate: 0 8px; }
+  .card .year { color: var(--muted); font-size: .8em; }
+  .card h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: 1.8em; margin: .1em 0 .4em; line-height: 1.1; }
+  .chips span { display: inline-block; font-size: .75em; padding: .25em .8em; margin: 0 .4em .4em 0; border-radius: 999px; background: #EEEDFE; color: #3C3489; }
+
+  .bar { position: absolute; left: 50%; translate: -50% 0; bottom: 3%; display: flex; align-items: center; gap: 14px; }
+  .dots { display: flex; gap: 8px; }
+  .dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.55); transition: background .3s; }
+  .dots span.on { background: #fff; outline: 2px solid var(--accent); }
+
+  .hint { position: absolute; left: 3%; bottom: 4%; color: rgba(255,255,255,.9); font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="cam" id="cam">
+    <div class="world" id="world">
+      <img src="berg.jpg" alt="Landschaft mit Bohlenweg, Hügeln und einem Vulkan">
+      <svg viewBox="0 0 851 577">
+        <path id="route" class="route"/>
+        <path id="routeDone" class="route-done"/>
+      </svg>
+      <div id="markers"></div>
+      <div class="walker" id="walker"></div>
+    </div>
+  </div>
+
+  <div class="card" id="card">
+    <div class="year" id="year"></div>
+    <h1 id="title"></h1>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="bar">
+    <div class="dots" id="dots"></div>
+    <button class="zoom" id="zoom" hidden>Gesamtbild (Z)</button>
+  </div>
+  <div class="hint">← → · Z · Esc</div>
+</div>
+
+<script>
+/* ---- Inhalte: kommen später aus content/blocks/weg.md (Positionen in % des Fotos) ---- */
+const overview = { year: 'Werdegang', title: 'Mein Weg', tags: ['in 5 Etappen'] };
+const stations = [
+  { at: [90, 94],   year: '2014',         title: 'Abitur',               tags: ['Mathe-LK', 'erste Website'] },
+  { at: [44, 83],   year: '2015 – 2018',  title: 'Ausbildung / Studium', tags: ['Informatik', 'Werkstudent'] },
+  { at: [80, 57],   year: '2018 – 2021',  title: 'Firma A',              tags: ['Angular', 'erstes Produkt live'] },
+  { at: [30, 46],   year: '2021 – heute', title: 'Firma B',              tags: ['Full-Stack', 'Team-Lead'] },
+  { at: [39.5, 33], year: 'Als Nächstes', title: 'Eure Firma',           tags: ['der nächste Gipfel'], summit: true },
+];
+/* Zwischenpunkte, damit der Weg dem Gelände folgt (Schlüssel = vor welcher Station) */
+const via = { 1: [[72, 89], [58, 86]], 2: [[54, 75], [68, 66]], 3: [[62, 56], [42, 52]], 4: [[34, 39]] };
+const secret = { at: [9, 74], year: 'Versteckte Station', title: 'Abseits des Weges', tags: ['Hobby', 'Anekdote'] };
+
+const W = 851, H = 577;
+const px = ([x, y]) => [x * W / 100, y * H / 100];
+
+/* ---- Weg aufbauen (Catmull-Rom → Bézier, in Foto-Pixeln) ---- */
+const pts = [], stationIdx = [];
+stations.forEach((s, i) => { (via[i] || []).forEach(p => pts.push(px(p))); stationIdx.push(pts.length); pts.push(px(s.at)); });
+const seg = i => {
+  const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+  const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+  const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+  return `C ${c1} ${c2} ${p2}`;
+};
+let d = `M ${pts[0]}`; const segs = [];
+for (let i = 0; i < pts.length - 1; i++) { d += ' ' + seg(i); segs.push(`M ${pts[i]} ${seg(i)}`); }
+const route = document.getElementById('route'), done = document.getElementById('routeDone');
+route.setAttribute('d', d); done.setAttribute('d', d);
+const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+route.parentNode.appendChild(tmp);
+const cum = [0]; segs.forEach(s => { tmp.setAttribute('d', s); cum.push(cum.at(-1) + tmp.getTotalLength()); }); tmp.remove();
+const total = route.getTotalLength();
+const lenAt = k => cum[stationIdx[k]] * total / cum.at(-1);
+
+/* ---- Marker ---- */
+const markers = document.getElementById('markers'), dots = document.getElementById('dots');
+const place = (el, [x, y]) => { el.style.left = x + '%'; el.style.top = y + '%'; };
+stations.forEach((s, i) => {
+  const el = document.createElement('div');
+  if (s.summit) {
+    el.className = 'pin flag';
+    el.innerHTML = '<svg viewBox="0 0 34 40"><line x1="5" y1="2" x2="5" y2="40" stroke="#2c2c2a" stroke-width="2.5"/><path d="M5 3 L31 9 L5 16 Z" fill="#D85A30"/></svg>';
+  } else { el.className = 'pin'; el.textContent = i + 1; }
+  el.title = s.title;
+  el.addEventListener('click', e => { e.stopPropagation(); go(i); });
+  place(el, s.at); markers.appendChild(el); s.el = el;
+});
+for (let i = 0; i <= stations.length; i++) dots.appendChild(document.createElement('span'));
+
+const hut = document.createElement('div');
+hut.className = 'hut'; hut.title = '?';
+hut.innerHTML = '<svg viewBox="0 0 22 22"><path d="M2 11 L11 3 L20 11 Z" fill="#993C1D"/><rect x="5" y="11" width="12" height="9" fill="#F1EFE8"/><rect x="9" y="14" width="4" height="6" fill="#5F5E5A"/></svg>';
+place(hut, secret.at); markers.appendChild(hut);
+
+/* ---- Kamera: Foto-% → Bühnen-% umrechnen, dann zoomen ohne Ränder zu zeigen ---- */
+const stage = document.getElementById('stage'), cam = document.getElementById('cam'), world = document.getElementById('world');
+function toStage([x, y]) {
+  const sh = stage.offsetHeight, wh = world.offsetHeight;
+  return [x, ((sh - wh) + y / 100 * wh) / sh * 100];
+}
+function camera(at, s) {
+  const [x, y] = toStage(at);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  cam.style.setProperty('--s', s);
+  cam.style.setProperty('--tx', clamp(50 - x * s, 100 - 100 * s, 0));
+  cam.style.setProperty('--ty', clamp(45 - y * s, 100 - 100 * s, 0));
+}
+
+/* ---- Wanderer läuft den Weg entlang ---- */
+const walker = document.getElementById('walker');
+let walkLen = 0, raf;
+function walkTo(target) {
+  cancelAnimationFrame(raf);
+  const from = walkLen, t0 = performance.now(), D = 1100;
+  (function step(now) {
+    const t = Math.min(1, (now - t0) / D), e = t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+    walkLen = from + (target - from) * e;
+    const p = route.getPointAtLength(walkLen);
+    walker.style.left = p.x / W * 100 + '%'; walker.style.top = p.y / H * 100 + '%';
+    done.style.strokeDasharray = `${walkLen} ${total}`;
+    done.style.opacity = walkLen < 1 ? 0 : 1;
+    if (t < 1) raf = requestAnimationFrame(step);
+  })(t0);
+}
+
+/* ---- Navigation ---- */
+const card = document.getElementById('card'), zoomBtn = document.getElementById('zoom');
+const fullView = { year: 'Gesamtbild', title: 'Mein Weg', tags: ['Station anklicken', 'Z zurück'] };
+let cur = -1, zoomedOut = false;
+function showCard(c) {
+  card.classList.add('swap');
+  setTimeout(() => {
+    /* Karte auf die Seite gegenüber der Station, damit sie nichts verdeckt */
+    card.classList.toggle('right', !c.at || c.at[0] < 50);
+    document.getElementById('year').textContent = c.year;
+    document.getElementById('title').textContent = c.title;
+    document.getElementById('chips').innerHTML = c.tags.map(t => `<span>${t}</span>`).join('');
+    card.classList.remove('swap');
+  }, 250);
+}
+function go(k) {
+  k = Math.max(-1, Math.min(stations.length - 1, k));
+  cur = k; zoomedOut = false;
+  zoomBtn.hidden = k === -1;
+  zoomBtn.textContent = 'Gesamtbild (Z)';
+  [...dots.children].forEach((el, i) => el.classList.toggle('on', i === k + 1));
+  stations.forEach((s, i) => s.el.classList.toggle('done', i <= k));
+  if (k === -1) { camera([50, 50], 1); showCard(overview); walkTo(0); return; }
+  const s = stations[k];
+  camera(s.at, s.summit ? 1.6 : 1.9);
+  showCard(s);
+  walkTo(lenAt(k));
+}
+/* Jederzeit aufs volle Bild herauszoomen, Position (Wanderer) bleibt erhalten */
+function toggleZoomOut() {
+  if (cur === -1) return;
+  if (zoomedOut) { go(cur); return; }
+  zoomedOut = true;
+  camera([50, 50], 1);
+  showCard(fullView);
+  zoomBtn.textContent = 'Zurück zur Station (Z)';
+}
+zoomBtn.addEventListener('click', e => { e.stopPropagation(); toggleZoomOut(); });
+hut.addEventListener('click', e => {
+  e.stopPropagation();
+  zoomedOut = true; zoomBtn.hidden = false; zoomBtn.textContent = 'Gesamtbild (Z)';
+  camera(secret.at, 2.2); showCard(secret);
+});
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') go(cur + 1);
+  if (e.key === 'ArrowLeft') go(cur - 1);
+  if (e.key === 'Escape') go(-1);
+  if (e.key === 'z' || e.key === 'Z') toggleZoomOut();
+});
+/* Klick ins Bild = weiter, außer im Gesamtbild (dort wählt man Stationen gezielt) */
+stage.addEventListener('click', () => { if (!zoomedOut) go(cur + 1); });
+addEventListener('resize', () => { if (!zoomedOut) go(cur); });
+
+go(-1);
+</script>
+</body>
+</html>

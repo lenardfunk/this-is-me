@@ -1,0 +1,36 @@
+// Shared building blocks for slide layouts (designed on a fixed 1600×900 canvas, px only).
+
+@mixin kicker {
+  font: 600 26px/1.2 var(--font-sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+@mixin chip {
+  display: inline-block;
+  font: 500 26px/1 var(--font-sans);
+  padding: 13px 26px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  white-space: nowrap;
+}
+
+@mixin slide-title($size: 72px) {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: $size;
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin: 0;
+}
+
+@mixin slide-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+}

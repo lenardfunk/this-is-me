@@ -1,0 +1,15 @@
+@let b = block();
+<header>
+  @if (b.kicker) {
+    <p class="kicker">{{ b.kicker }}</p>
+  }
+  <h1>{{ b.title }}</h1>
+</header>
+<div class="items" [style.--n]="b.items.length">
+  @for (item of b.items; track $index) {
+    <figure [style.--tilt.deg]="tilt($index)">
+      <div class="photo"><app-media [media]="item.media" /></div>
+      <figcaption>{{ item.caption }}</figcaption>
+    </figure>
+  }
+</div>

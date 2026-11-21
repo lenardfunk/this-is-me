@@ -1,0 +1,19 @@
+@let b = block();
+<div class="media"><app-media [media]="b.media" /></div>
+<div class="info">
+  @if (b.kicker) {
+    <p class="kicker">{{ b.kicker }}</p>
+  }
+  <h1>{{ b.title }}</h1>
+  <ul class="chips">
+    @for (chip of b.chips; track chip) {
+      <li>{{ chip }}</li>
+    }
+  </ul>
+  @if (b.metric; as m) {
+    <div class="metric">
+      <div class="value">{{ m.value }}</div>
+      <div class="label">{{ m.label }}</div>
+    </div>
+  }
+</div>

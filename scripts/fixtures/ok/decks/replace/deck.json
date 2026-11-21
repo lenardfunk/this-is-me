@@ -1,0 +1,6 @@
+{
+  "id": "replace",
+  "extends": "inherit",
+  "company": { "accent": "#aa0000" },
+  "slides": ["shadow", "intro"]
+}

@@ -1,0 +1,24 @@
+@let b = block();
+<header>
+  @if (b.kicker) {
+    <p class="kicker">{{ b.kicker }}</p>
+  }
+  <h1>{{ b.title }}</h1>
+</header>
+<div class="layers">
+  @for (layer of b.layers; track layer.label; let i = $index) {
+    <section class="layer" [class.hidden]="i >= visibleLayers()" [style.--i]="i" [style.--n]="b.layers.length">
+      <h2>
+        @if (layer.icon) {
+          <span class="material-symbols-outlined" aria-hidden="true">{{ layer.icon }}</span>
+        }
+        {{ layer.label }}
+      </h2>
+      <ul>
+        @for (item of layer.items; track item) {
+          <li>{{ item }}</li>
+        }
+      </ul>
+    </section>
+  }
+</div>

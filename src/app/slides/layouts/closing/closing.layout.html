@@ -1,0 +1,13 @@
+@let b = block();
+<div class="backdrop"><app-media [media]="backdrop()" /></div>
+<div class="panel">
+  @if (b.kicker) {
+    <p class="kicker">{{ b.kicker }}</p>
+  }
+  <h1>{{ b.title }}</h1>
+  <ol>
+    @for (point of b.points; track $index) {
+      <li><span class="num">{{ $index + 1 }}</span>{{ point }}</li>
+    }
+  </ol>
+</div>

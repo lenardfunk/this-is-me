@@ -1,0 +1,152 @@
+:host {
+  position: fixed;
+  inset: 0;
+  display: block;
+}
+
+header {
+  position: absolute;
+  left: 48px;
+  right: 48px;
+  top: 36px;
+  height: 90px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+h1 {
+  font: 400 64px/1 var(--font-serif);
+  letter-spacing: -0.015em;
+}
+
+.for {
+  margin: 0;
+  font: 400 34px/1 var(--font-sans);
+  color: var(--accent);
+
+  strong {
+    font-weight: 600;
+  }
+}
+
+.grid {
+  position: absolute;
+  left: 48px;
+  right: 48px;
+  top: 140px;
+  bottom: 70px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  grid-auto-flow: dense;
+  gap: 16px;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 28px 32px;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+
+  &.md {
+    grid-column: span 1;
+  }
+  &.wide {
+    grid-column: span 2;
+  }
+  &.lg {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(31, 30, 27, 0.14);
+  }
+
+  &:focus-visible {
+    outline: 5px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  &:not(.has-image) {
+    background: var(--accent-soft);
+    border-color: transparent;
+  }
+}
+
+.label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+
+  .material-symbols-outlined {
+    font-size: 52px;
+    color: var(--accent);
+  }
+
+  .text {
+    font: 400 40px/1.1 var(--font-serif);
+  }
+}
+
+.lg .label .text {
+  font-size: 60px;
+}
+
+.has-image {
+  color: #fff;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 60%);
+  }
+
+  .label .material-symbols-outlined {
+    color: #fff;
+  }
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+}
+
+.route path {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 3;
+  stroke-dasharray: 1 9;
+  stroke-linecap: round;
+}
+
+.hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  margin: 0;
+  text-align: center;
+  font: 400 24px/1 var(--font-sans);
+  color: var(--muted);
+}

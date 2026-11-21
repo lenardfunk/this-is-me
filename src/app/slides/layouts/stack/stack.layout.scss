@@ -1,0 +1,77 @@
+@use '../../../styles/slide' as s;
+
+:host {
+  @include s.slide-root;
+  padding: 64px 120px;
+}
+
+header {
+  height: 150px;
+}
+
+.kicker {
+  @include s.kicker;
+  margin: 0 0 14px;
+}
+
+h1 {
+  @include s.slide-title(68px);
+}
+
+.layers {
+  display: grid;
+  gap: 16px;
+}
+
+.layer {
+  display: grid;
+  grid-template-columns: 440px 1fr;
+  align-items: center;
+  height: calc((620px - 16px * (var(--n) - 1)) / var(--n));
+  max-height: 150px;
+  padding: 0 40px;
+  border-radius: 24px;
+  // top layer lightest, infrastructure at the bottom is the most saturated
+  background: color-mix(in srgb, var(--accent) calc(8% + var(--i) * 6%), white);
+  transition:
+    opacity 450ms ease,
+    transform 450ms ease;
+
+  &.hidden {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  font: 400 44px/1.1 var(--font-serif);
+
+  .material-symbols-outlined {
+    font-size: 48px;
+    color: var(--accent);
+  }
+}
+
+ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  @include s.chip;
+  background: var(--surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    transition-duration: 1ms;
+  }
+}

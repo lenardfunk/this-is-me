@@ -1,0 +1,5 @@
+{
+  "id": "hidden",
+  "extends": "base",
+  "overrides": { "trail": { "hide": ["s1"] } }
+}
