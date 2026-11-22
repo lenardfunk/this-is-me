@@ -16,7 +16,13 @@ export const MEDIA_COMPONENTS: Record<string, Type<unknown>> = {};
     @let m = media();
     @switch (m.type) {
       @case ('image') {
-        <img [src]="m.src" [alt]="m.alt" [style.object-position]="m.focus ?? null" [attr.loading]="loading()" draggable="false" />
+        <img
+          [src]="m.src"
+          [alt]="m.alt"
+          [style.object-position]="m.focus ?? null"
+          [attr.loading]="loading()"
+          draggable="false"
+        />
       }
       @case ('svg') {
         <img [src]="m.src" [alt]="m.alt" [attr.loading]="loading()" draggable="false" />
@@ -51,7 +57,13 @@ export const MEDIA_COMPONENTS: Record<string, Type<unknown>> = {};
       height: 100%;
       font: 500 28px/1.3 var(--font-sans);
       color: var(--muted);
-      background: repeating-linear-gradient(45deg, #f3efe8, #f3efe8 16px, #ece7de 16px, #ece7de 32px);
+      background: repeating-linear-gradient(
+        45deg,
+        #f3efe8,
+        #f3efe8 16px,
+        #ece7de 16px,
+        #ece7de 32px
+      );
     }
   `,
 })

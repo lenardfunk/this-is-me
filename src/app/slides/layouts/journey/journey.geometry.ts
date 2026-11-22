@@ -52,7 +52,10 @@ const bezier = (p0: Pt, c1: Pt, c2: Pt, p3: Pt, t: number): Pt => {
   const b = 3 * u * u * t;
   const c = 3 * u * t * t;
   const d = t * t * t;
-  return [a * p0[0] + b * c1[0] + c * c2[0] + d * p3[0], a * p0[1] + b * c1[1] + c * c2[1] + d * p3[1]];
+  return [
+    a * p0[0] + b * c1[0] + c * c2[0] + d * p3[0],
+    a * p0[1] + b * c1[1] + c * c2[1] + d * p3[1],
+  ];
 };
 
 export function buildPath(stations: PathStation[], imageSize: Size): PathModel {
@@ -82,7 +85,12 @@ export function buildPath(stations: PathStation[], imageSize: Size): PathModel {
     }
     cumulative.push(len);
   }
-  return { d, total: cumulative[cumulative.length - 1], stationLength: stationPoint.map((i) => cumulative[i]), samples };
+  return {
+    d,
+    total: cumulative[cumulative.length - 1],
+    stationLength: stationPoint.map((i) => cumulative[i]),
+    samples,
+  };
 }
 
 /** Point (in photo pixels) at a distance along the path; clamped to the path ends. */
@@ -134,4 +142,5 @@ export function cameraFor(at: Pt, zoom: number, imageSize: Size): Camera {
   };
 }
 
-export const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+export const easeInOutCubic = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;

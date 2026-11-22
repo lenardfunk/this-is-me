@@ -4,7 +4,7 @@
       <h1>{{ heading() }}</h1>
       <p class="for">
         @if (deck.company; as company) {
-          für <strong>{{ company.name }}</strong>
+          @ <strong>{{ company.name }}</strong>
         } @else {
           {{ deck.title }}
         }
@@ -25,8 +25,19 @@
           (click)="open(tile)"
         >
           @if (tile.journey; as j) {
-            <img class="bg" style="object-position: 50% 100%" [src]="j.image" alt="" draggable="false" />
-            <svg class="bg route" [attr.viewBox]="j.viewBox" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+            <img
+              class="bg"
+              style="object-position: 50% 100%"
+              [src]="j.image"
+              alt=""
+              draggable="false"
+            />
+            <svg
+              class="bg route"
+              [attr.viewBox]="j.viewBox"
+              preserveAspectRatio="xMidYMax slice"
+              aria-hidden="true"
+            >
               <path [attr.d]="j.d" />
             </svg>
           } @else if (tile.image) {

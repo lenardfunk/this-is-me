@@ -4,7 +4,9 @@
   <h1>{{ b.title }}</h1>
   <p class="subtitle">{{ b.subtitle }}</p>
   @if (b.location) {
-    <p class="location"><span class="material-symbols-outlined" aria-hidden="true">location_on</span>{{ b.location }}</p>
+    <p class="location">
+      <span class="material-symbols-outlined" aria-hidden="true">location_on</span>{{ b.location }}
+    </p>
   }
 </div>
 <div class="portrait">
@@ -18,9 +20,11 @@
       (click)="flip()"
     >
       <span class="face front"><app-media [media]="b.photo" [eager]="true" /></span>
-      <span class="face back"><app-media [media]="back" /></span>
+      <span class="face back"><app-media [media]="back" [eager]="true" /></span>
     </button>
   } @else {
-    <div class="flipper"><span class="face front"><app-media [media]="b.photo" [eager]="true" /></span></div>
+    <div class="flipper">
+      <span class="face front"><app-media [media]="b.photo" [eager]="true" /></span>
+    </div>
   }
 </div>

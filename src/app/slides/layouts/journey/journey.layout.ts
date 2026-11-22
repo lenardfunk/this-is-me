@@ -18,8 +18,8 @@ import {
   easeInOutCubic,
   pointAtLength,
   worldHeight,
-  type Pt,
   type PathModel,
+  type Pt,
 } from './journey.geometry';
 
 type Mode = 'station' | 'overview' | 'hut';
@@ -32,9 +32,9 @@ interface CardContent {
   at?: Pt;
 }
 
-const WALK_MS = 1100;
-const ZOOM_STATION = 1.9;
-const ZOOM_SUMMIT = 1.6;
+const WALK_MS = 2000;
+const ZOOM_STATION = 1.3;
+const ZOOM_SUMMIT = 1.0;
 const ZOOM_HUT = 2.2;
 
 /**
@@ -61,16 +61,21 @@ export class JourneyLayout {
   /** Local view mode (not part of navigation): zoomed-out overview or the hidden hut. */
   protected readonly mode = signal<Mode>('station');
 
-  private readonly reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  private readonly reducedMotion =
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
   protected readonly stations = computed(() => this.block().stations);
-  protected readonly path = computed<PathModel>(() => buildPath(this.stations(), this.block().imageSize));
+  protected readonly path = computed<PathModel>(() =>
+    buildPath(this.stations(), this.block().imageSize),
+  );
   protected readonly worldAspect = computed(() => {
     const [w, h] = this.block().imageSize;
     return `${w} / ${h}`;
   });
   protected readonly worldHeightPx = computed(() => worldHeight(this.block().imageSize));
-  protected readonly viewBox = computed(() => `0 0 ${this.block().imageSize[0]} ${this.block().imageSize[1]}`);
+  protected readonly viewBox = computed(
+    () => `0 0 ${this.block().imageSize[0]} ${this.block().imageSize[1]}`,
+  );
 
   protected readonly camera = computed(() => {
     const { secret, imageSize } = this.block();
@@ -87,8 +92,10 @@ export class JourneyLayout {
     const stations = this.stations();
     const step = this.step();
     if (this.mode() === 'hut' && secret) return secret;
-    if (this.mode() === 'overview') return { year: 'Gesamtbild', title, tags: ['Station anklicken', 'Z zurück'] };
-    if (step === 0) return { year: kicker ?? 'Werdegang', title, tags: [`in ${stations.length} Etappen`] };
+    if (this.mode() === 'overview')
+      return { year: 'Gesamtbild', title, tags: ['Station anklicken', 'Z zurück'] };
+    if (step === 0)
+      return { year: kicker ?? 'Werdegang', title, tags: [`in ${stations.length} Etappen`] };
     return stations[step - 1];
   });
 
@@ -103,7 +110,9 @@ export class JourneyLayout {
   protected readonly walker = signal<Pt>([0, 0]);
   protected readonly doneLength = signal(0);
 
-  protected readonly toggleLabel = computed(() => (this.mode() === 'station' ? 'Gesamtbild (Z)' : 'Zurück zur Station (Z)'));
+  protected readonly toggleLabel = computed(() =>
+    this.mode() === 'station' ? 'Gesamtbild (Z)' : 'Zurück zur Station (Z)',
+  );
   protected readonly showToggle = computed(() => this.step() > 0 || this.mode() === 'hut');
   protected readonly dots = computed(() => Array.from({ length: this.block().steps }, (_, i) => i));
 
