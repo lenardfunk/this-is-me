@@ -16,6 +16,15 @@
         "docs/prototypes/serve.mjs"
       ],
       "port": 4300
+    },
+    {
+      "name": "slide-creator",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "creator"
+      ],
+      "port": 4400
     }
   ]
 }

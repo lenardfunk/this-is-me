@@ -13,6 +13,24 @@ Decks pro Firma. Konzept und Phasen: [`docs/IMPLEMENTIERUNGSPLAN.md`](docs/IMPLE
 | `npm test`             | Komponenten- und Logik-Tests (Angular-Test-Runner)                     |
 | `npm run test:content` | Tests der Content-Pipeline (`node --test`)                             |
 | `npm run content`      | Nur den Content bauen (`content/` → `public/generated/`)               |
+| `npm run creator`      | Slide-Creator (Editor für Decks und Folien) auf Port 4400              |
+| `npm run test:creator` | Tests des Slide-Creators (Angular-Test-Runner)                         |
+
+## Slide-Creator
+
+`npm run creator` startet einen lokalen Editor unter http://localhost:4400 (Quellcode in
+[`slide-creator/`](slide-creator/)): Deck wählen oder neu anlegen (Firma, Akzentfarbe, Vererbung),
+Folien aus Layout-Vorlagen erstellen, per Formular bearbeiten, umsortieren und als Vertiefung
+einhängen – mit Live-Vorschau aus den echten Folien-Komponenten. Gespeichert wird direkt in
+`content/` (Markdown + JSON im gleichen Stil wie von Hand), danach läuft der Content-Build, sodass
+eine parallel laufende Präsentations-App (`npm start`) die Änderung sofort zeigt.
+
+- Ein kleiner Node-Server (`slide-creator/server/`, nur `127.0.0.1:4310`) liest und schreibt die
+  Dateien; das Angular-Frontend erreicht ihn per Proxy unter `/api` und `/media`.
+- In Firmen-Decks wird eine Bibliotheks-Folie beim Speichern standardmäßig als **eigene Kopie** im
+  Deck abgelegt (umschaltbar auf „Bibliothek“). Werdegang-Stationen ausblenden/hervorheben landet
+  als `overrides` in der `deck.json`.
+- Hochgeladene Bilder landen in `public/media/uploads/`.
 
 ## Inhalte pflegen
 
@@ -24,8 +42,9 @@ Decks pro Firma. Konzept und Phasen: [`docs/IMPLEMENTIERUNGSPLAN.md`](docs/IMPLE
 - Fehler in den Inhalten (Tippfehler im Layout, fehlender Block, Zyklus …) meldet der Build mit
   Datei, Feldpfad und Problem.
 
-Neues Firmen-Deck: Ordner `content/decks/<firma>/` mit einer `deck.json` anlegen
-(siehe `content/decks/beispiel-firma/`), dann `/d/<firma>` öffnen.
+Neues Firmen-Deck: im Slide-Creator „Neues Deck“ – oder von Hand einen Ordner
+`content/decks/<firma>/` mit einer `deck.json` anlegen (siehe `content/decks/beispiel-firma/`),
+dann `/d/<firma>` öffnen.
 
 ## Bedienung
 

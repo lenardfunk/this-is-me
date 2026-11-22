@@ -1,0 +1,322 @@
+<sc-media-datalist />
+
+<header class="top">
+  <a class="btn ghost back" routerLink="/" title="Alle Decks"><span class="icon">arrow_back</span> Decks</a>
+  <div class="deck-title">
+    <span class="title">{{ deckDraft()?.title ?? deckId() }}</span>
+    <code>{{ deckId() }}</code>
+    @if (deckDraft()?.extends; as parent) {
+      <span class="badge"><span class="icon">subdirectory_arrow_right</span> erbt von {{ parent }}</span>
+    }
+  </div>
+  <span class="spacer"></span>
+  <span class="status">
+    @if (buildResult()?.problems?.length) {
+      <span class="badge warn" title="Der Content-Build meldet Fehler – siehe unten links">
+        <span class="icon">error</span> {{ buildResult()!.problems.length }} Build-Fehler
+      </span>
+    } @else if (dirtyCount()) {
+      <span class="badge accent">{{ dirtyCount() }} ungespeichert</span>
+    } @else if (savedAt()) {
+      <span class="badge"><span class="icon">check</span> gespeichert</span>
+    }
+  </span>
+  @if (dirtyCount()) {
+    <button type="button" class="btn ghost" (click)="discardAll()">Verwerfen</button>
+  }
+  <button type="button" class="btn primary" [disabled]="!dirtyCount() || saving()" (click)="save()" title="Speichern (Strg+S)">
+    <span class="icon">save</span> {{ saving() ? 'Speichert …' : 'Speichern' }}
+  </button>
+</header>
+
+@if (loadProblems().length) {
+  <div class="problems page-problems">
+    <strong>Deck konnte nicht geladen werden</strong>
+    <ul>
+      @for (p of loadProblems(); track p) {
+        <li>{{ p }}</li>
+      }
+    </ul>
+  </div>
+}
+
+@if (deckDraft(); as deck) {
+  <div class="layout">
+    <!-- ------------------------------------------------------------ sidebar -->
+    <nav class="sidebar" aria-label="Folien">
+      <button type="button" class="nav-item settings" [class.active]="selected() === DECK" (click)="select(DECK)">
+        <span class="icon">tune</span> Deck-Einstellungen
+        @if (deckDirty()) {
+          <span class="dot" title="Ungespeichert"></span>
+        }
+      </button>
+
+      <div class="list-head">
+        <h2>Folien</h2>
+        <button type="button" class="btn small" (click)="openAdd()"><span class="icon">add</span> Folie</button>
+      </div>
+      @if (!ownSlides()) {
+        <p class="inherit-note">
+          <span class="icon">link</span>
+          <span>Geerbt von „{{ deck.extends }}“. Sobald du hier etwas änderst, bekommt das Deck eine eigene Liste.</span>
+        </p>
+      }
+
+      <ol class="slides">
+        @for (ref of slides(); track $index; let i = $index, first = $first, last = $last) {
+          @let id = idOf(ref);
+          <li>
+            <div class="slide-item" [class.active]="selected() === id">
+              <button type="button" class="slide-main" (click)="select(id)">
+                <span class="n">{{ i + 1 }}</span>
+                <span class="icon layout-icon">{{ iconOf(id) }}</span>
+                <span class="text">
+                  <span class="t">{{ titleOf(id) }}</span>
+                  <span class="m">
+                    {{ id }}
+                    @if (sourceOf(blockInfo().get(id)); as src) {
+                      <span class="src" [class.own]="src.own">{{ src.label }}</span>
+                    }
+                  </span>
+                </span>
+                @if (isDirty(id)) {
+                  <span class="dot" title="Ungespeichert"></span>
+                }
+              </button>
+              <span class="actions">
+                <button type="button" class="btn ghost icon-only" title="Nach oben" [disabled]="first" (click)="moveSlide(i, -1)"><span class="icon">arrow_upward</span></button>
+                <button type="button" class="btn ghost icon-only" title="Nach unten" [disabled]="last" (click)="moveSlide(i, 1)"><span class="icon">arrow_downward</span></button>
+                <button type="button" class="btn ghost icon-only" title="Vertiefung hinzufügen" (click)="openAdd(id)"><span class="icon">subdirectory_arrow_right</span></button>
+                <button type="button" class="btn ghost icon-only danger" title="Aus dem Deck entfernen" (click)="removeSlide(i)"><span class="icon">close</span></button>
+              </span>
+            </div>
+            @if (kidsOf(ref); as kids) {
+              @if (kids.length) {
+                <ol class="children">
+                  @for (cid of kids; track cid; let j = $index, cfirst = $first, clast = $last) {
+                    <li class="slide-item child" [class.active]="selected() === cid">
+                      <button type="button" class="slide-main" (click)="select(cid)">
+                        <span class="icon sub">subdirectory_arrow_right</span>
+                        <span class="text">
+                          <span class="t">{{ titleOf(cid) }}</span>
+                          <span class="m">
+                            {{ cid }}
+                            @if (sourceOf(blockInfo().get(cid)); as src) {
+                              <span class="src" [class.own]="src.own">{{ src.label }}</span>
+                            }
+                          </span>
+                        </span>
+                        @if (isDirty(cid)) {
+                          <span class="dot" title="Ungespeichert"></span>
+                        }
+                      </button>
+                      <span class="actions">
+                        <button type="button" class="btn ghost icon-only" title="Nach oben" [disabled]="cfirst" (click)="moveChild(i, j, -1)"><span class="icon">arrow_upward</span></button>
+                        <button type="button" class="btn ghost icon-only" title="Nach unten" [disabled]="clast" (click)="moveChild(i, j, 1)"><span class="icon">arrow_downward</span></button>
+                        <button type="button" class="btn ghost icon-only danger" title="Vertiefung entfernen" (click)="removeChild(i, j)"><span class="icon">close</span></button>
+                      </span>
+                    </li>
+                  }
+                </ol>
+              }
+            }
+          </li>
+        } @empty {
+          <li class="empty">Noch keine Folien. <button type="button" class="linkish" (click)="openAdd()">Erste Folie anlegen</button></li>
+        }
+      </ol>
+
+      @if (buildResult(); as build) {
+        @if (build.problems.length) {
+          <div class="problems build">
+            <strong>Content-Build: Fehler</strong>
+            <ul>
+              @for (p of build.problems; track p) {
+                <li>{{ p }}</li>
+              }
+            </ul>
+            <span class="hint">Die Präsentations-App zeigt bis zur Korrektur den letzten gültigen Stand.</span>
+          </div>
+        }
+        @if (build.warnings.length) {
+          <div class="problems warn build">
+            <strong>Hinweise</strong>
+            <ul>
+              @for (w of build.warnings; track w) {
+                <li>{{ w }}</li>
+              }
+            </ul>
+          </div>
+        }
+      }
+    </nav>
+
+    <!-- ------------------------------------------------------------ editor -->
+    <main class="editor">
+      @if (saveProblems().length) {
+        <div class="problems">
+          <strong>Speichern fehlgeschlagen</strong>
+          <ul>
+            @for (p of saveProblems(); track p) {
+              <li>{{ p }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      @switch (selected()) {
+        @case (DECK) {
+          <h2 class="editor-title">Deck-Einstellungen</h2>
+          <sc-text label="Titel" [value]="deck.title" (valueChange)="setDeck(['title'], $event || undefined)" />
+
+          <section class="section">
+            <h3>Firma</h3>
+            <div class="row">
+              <sc-text
+                label="Name"
+                [optional]="true"
+                [value]="deck.company?.name"
+                [hint]="companyHint"
+                (valueChange)="setCompany('name', $event)"
+              />
+              <div class="field accent-field">
+                <label for="accent">Akzentfarbe</label>
+                <div class="color">
+                  <input id="accent" type="color" [value]="deck.company?.accent ?? '#534ab7'" (input)="setCompany('accent', $any($event.target).value.toUpperCase())" />
+                  <code>{{ deck.company?.accent ?? 'Standard' }}</code>
+                  @if (deck.company?.accent) {
+                    <button type="button" class="btn ghost icon-only" title="Standardfarbe" (click)="setCompany('accent', undefined)"><span class="icon">restart_alt</span></button>
+                  }
+                </div>
+              </div>
+            </div>
+            <sc-media-path label="Logo" [optional]="true" [value]="deck.company?.logo" (valueChange)="setCompany('logo', $event)" />
+          </section>
+
+          <section class="section">
+            <h3>Deck</h3>
+            <div class="row">
+              <div class="field">
+                <label for="extends">Erbt von</label>
+                <select id="extends" [value]="deck.extends ?? ''" (change)="setDeck(['extends'], $any($event.target).value || undefined)">
+                  <option value="">– nichts (Basis-Deck) –</option>
+                  @for (d of decks(); track d.id) {
+                    @if (d.id !== deckId()) {
+                      <option [value]="d.id" [selected]="deck.extends === d.id">{{ d.title }} ({{ d.id }})</option>
+                    }
+                  }
+                </select>
+              </div>
+              <sc-number label="Zielzeit (Minuten)" [min]="1" [value]="deck.durationMinutes" hint="Für den Timer im Präsentator-Fenster" (valueChange)="setDeck(['durationMinutes'], $event)" />
+            </div>
+            <label class="check spaced">
+              <input type="checkbox" [checked]="!!deck.unlisted" (change)="setDeck(['unlisted'], $any($event.target).checked || undefined)" />
+              Nicht in der Deck-Auswahl auflisten (nur per Link erreichbar)
+            </label>
+          </section>
+
+          @if (deck.extends) {
+            <section class="section">
+              <h3>Folienliste</h3>
+              @if (ownSlides()) {
+                <p class="text">Dieses Deck hat eine <strong>eigene Folienliste</strong>. Änderungen an der Reihenfolge im Basis-Deck wirken hier nicht.</p>
+                <button type="button" class="btn" (click)="inheritSlides()"><span class="icon">link</span> Wieder vom Basis-Deck erben</button>
+              } @else {
+                <p class="text">Die Folienliste wird von „{{ deck.extends }}“ <strong>geerbt</strong>.</p>
+                <button type="button" class="btn" (click)="customizeSlides()"><span class="icon">content_copy</span> Eigene Liste anlegen</button>
+              }
+            </section>
+          }
+
+          <section class="section links">
+            <h3>Präsentation</h3>
+            <a class="btn small" [href]="'http://localhost:4200/d/' + deckId()" target="_blank" rel="noopener"><span class="icon">open_in_new</span> Übersicht öffnen</a>
+            <a class="btn small" [href]="'http://localhost:4200/presenter/' + deckId()" target="_blank" rel="noopener"><span class="icon">co_present</span> Präsentator-Fenster</a>
+            <span class="hint">Die Präsentations-App muss laufen (npm start).</span>
+          </section>
+        }
+
+        @case (ADD) {
+          <sc-add-slide
+            [deckId]="deckId()"
+            [deckIsChild]="isChild()"
+            [blocks]="details()?.blocks ?? []"
+            [usedIds]="usedIds()"
+            [mainSlides]="mainIds()"
+            [initialParent]="addParent()"
+            [titleOf]="titleOf"
+            (add)="addSlide($event)"
+            (cancel)="select(DECK)"
+          />
+        }
+
+        @default {
+          @if (selectedDraft(); as draft) {
+            @let info = selectedInfo();
+            @let choices = locationChoices(info);
+            <div class="file-bar">
+              <span class="icon">description</span>
+              @if (choices.length > 1) {
+                <label for="loc">Speichern in</label>
+                <select id="loc" class="input" [value]="locationValue(draft.location)" (change)="setDraftLocation(selected(), $any($event.target).value)">
+                  @for (c of choices; track locationValue(c)) {
+                    <option [value]="locationValue(c)" [selected]="sameAsSource(c, draft.location)">{{ choiceLabel(c, info) }}</option>
+                  }
+                </select>
+              } @else {
+                <span>Datei in: <strong>{{ where(draft.location) }}</strong></span>
+              }
+              <span class="spacer"></span>
+              @if (isDirty(selected())) {
+                <button type="button" class="btn ghost small" (click)="revertBlock(selected())">Änderungen verwerfen</button>
+              }
+              @if (info && info.shadows.length && info.location.kind === 'deck' && info.location.deck === deckId()) {
+                <button type="button" class="btn ghost small danger" (click)="deleteOwnCopy(selected())" title="Eigene Kopie löschen, Original wieder verwenden">
+                  <span class="icon">undo</span> Kopie löschen
+                </button>
+              }
+            </div>
+            @if (info && draft.location.kind === 'library' && isChild()) {
+              <p class="file-note warn"><span class="icon">public</span> Änderungen gelten für <strong>alle Decks</strong>, die diese Folie aus der Bibliothek nutzen.</p>
+            } @else if (info && !sameAsSource(draft.location, info.location)) {
+              <p class="file-note"><span class="icon">content_copy</span> Beim Speichern entsteht eine eigene Kopie für dieses Deck – das Original bleibt unverändert.</p>
+            }
+
+            <sc-block-editor
+              [draft]="draft"
+              [childIds]="selectedChildren()"
+              [ownBlock]="!isChild() || ownsFile(info)"
+              [override]="overrideOf(selected())"
+              [showOverride]="isChild() || !!overrideOf(selected())"
+              (draftChange)="updateDraft(selected(), $event)"
+              (overrideChange)="setOverride(selected(), $event)"
+            />
+          } @else {
+            <p class="loading">Lädt …</p>
+          }
+        }
+      }
+    </main>
+
+    <!-- ------------------------------------------------------------ preview -->
+    <aside class="preview-col">
+      <div class="preview-head">
+        <h2>Vorschau</h2>
+        @if (previewId(); as pid) {
+          <span class="m">{{ titleOf(pid) }}</span>
+        }
+      </div>
+      @if (previewProblems().length) {
+        <div class="problems">
+          <strong>Diese Folie ist so noch nicht gültig</strong>
+          <ul>
+            @for (p of previewProblems(); track p) {
+              <li>{{ p }}</li>
+            }
+          </ul>
+        </div>
+      }
+      <sc-preview [slide]="preview()" [accent]="accent()" [stale]="previewProblems().length > 0" [presentUrl]="presentUrl()" />
+    </aside>
+  </div>
+}

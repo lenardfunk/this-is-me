@@ -46,6 +46,11 @@ export interface BuildOptions {
   publicDir?: string;
   /** Receives non-fatal warnings (missing media files). */
   warn?: (message: string) => void;
+  /**
+   * In-memory file contents that take precedence over the disk (absolute path -> source).
+   * Used by the slide creator to preview unsaved edits.
+   */
+  drafts?: Map<string, string>;
 }
 
 // ---- helpers -------------------------------------------------------------------------------
@@ -96,16 +101,16 @@ const rel = (base: string, file: string) => path.relative(base, file).split(path
 
 // ---- loading -------------------------------------------------------------------------------
 
-interface RawBlock {
+export interface RawBlock {
   file: string;
   frontmatter: PlainObject;
   body: string;
   notes: string;
 }
 
-function readBlockFile(file: string): RawBlock {
-  const source = fs.readFileSync(file, 'utf8');
-  // gray-matter caches by content; passing an empty options object disables nothing, but strings are immutable
+/** Splits a block file into frontmatter, Markdown body and speaker notes. */
+export function parseBlockSource(source: string, file = ''): RawBlock {
+  // gray-matter caches by content, hence the clone below
   const parsed = matter(source);
   const idx = parsed.content.indexOf(NOTES_MARKER);
   const body = idx === -1 ? parsed.content : parsed.content.slice(0, idx);
@@ -113,13 +118,25 @@ function readBlockFile(file: string): RawBlock {
   return { file, frontmatter: structuredClone(parsed.data) as PlainObject, body: body.trim(), notes: notes.trim() };
 }
 
-class DeckLoader {
+export class DeckLoader {
   readonly opts: BuildOptions;
   readonly deckFiles = new Map<string, DeckFile>();
   readonly problems: string[] = [];
 
   constructor(opts: BuildOptions) {
     this.opts = opts;
+  }
+
+  exists(file: string): boolean {
+    return this.opts.drafts?.has(path.resolve(file)) || fs.existsSync(file);
+  }
+
+  read(file: string): string {
+    return this.opts.drafts?.get(path.resolve(file)) ?? fs.readFileSync(file, 'utf8');
+  }
+
+  readBlock(file: string): RawBlock {
+    return parseBlockSource(this.read(file), file);
   }
 
   get decksDir() {
@@ -130,7 +147,7 @@ class DeckLoader {
     if (!fs.existsSync(this.decksDir)) return [];
     return fs
       .readdirSync(this.decksDir, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && fs.existsSync(path.join(this.decksDir, d.name, 'deck.json')))
+      .filter((d) => d.isDirectory() && this.exists(path.join(this.decksDir, d.name, 'deck.json')))
       .map((d) => d.name)
       .sort();
   }
@@ -140,12 +157,12 @@ class DeckLoader {
     if (cached) return cached;
     const file = path.join(this.decksDir, id, 'deck.json');
     const label = rel(this.opts.contentDir, file);
-    if (!fs.existsSync(file)) {
+    if (!this.exists(file)) {
       throw new ContentError([`${requestedBy ?? 'build'}: deck "${id}" not found (expected ${label})`]);
     }
     let json: unknown;
     try {
-      json = JSON.parse(fs.readFileSync(file, 'utf8'));
+      json = JSON.parse(this.read(file));
     } catch (e) {
       throw new ContentError([`${label}: invalid JSON – ${(e as Error).message}`]);
     }
@@ -183,7 +200,7 @@ class DeckLoader {
       .reverse()
       .map((d) => path.join(this.decksDir, d.id, 'blocks', `${blockId}.md`));
     candidates.push(path.join(this.opts.contentDir, 'blocks', `${blockId}.md`));
-    return candidates.find((c) => fs.existsSync(c));
+    return candidates.find((c) => this.exists(c));
   }
 }
 
@@ -233,7 +250,7 @@ function resolveBlock(
     throw new ContentError([`${deckLabel}: block "${blockId}" not found (looked in decks/*/blocks and blocks/)`]);
   }
   const label = rel(loader.opts.contentDir, file);
-  const raw = readBlockFile(file);
+  const raw = loader.readBlock(file);
   if (raw.frontmatter['id'] !== blockId) {
     throw new ContentError([
       `${label}: id "${String(raw.frontmatter['id'])}" must equal the file name "${blockId}"`,
@@ -322,6 +339,28 @@ export function resolveDeck(loader: DeckLoader, id: string): ResolvedDeck {
   missing.forEach((m) => loader.opts.warn?.(`deck "${id}": media file not found: public/${m}`));
 
   return { id, title: merged.title, durationMinutes: merged.durationMinutes, ...(company ? { company } : {}), slides };
+}
+
+/**
+ * Resolves a single block in the context of a deck (inheritance, overrides, interpolation) without
+ * requiring the rest of the deck to be valid. If the block is a main slide of the deck, its children
+ * are used for the journey deep-dive check and the step links. Used by the slide creator's preview.
+ */
+export function resolveBlockInDeck(
+  options: BuildOptions,
+  deckId: string,
+  blockId: string,
+): { slide: ResolvedSlide; company?: ResolvedDeck['company'] } {
+  const loader = new DeckLoader(options);
+  const deckChain = loader.chain(deckId);
+  const merged = mergeChain(deckChain, deckId);
+  const ref = merged.slides.find((r) => (typeof r === 'string' ? r : r.id) === blockId);
+  const childIds = ref && typeof ref !== 'string' ? (ref.children ?? []) : [];
+  const block = resolveBlock(loader, deckChain, merged, blockId, childIds, new Set());
+  return {
+    slide: { ...block, children: [], stepLinks: buildStepLinks(block, childIds) },
+    company: merged.company as ResolvedDeck['company'],
+  };
 }
 
 function buildStepLinks(block: ResolvedBlock, childIds: string[]): (number | null)[] {

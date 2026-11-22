@@ -13,6 +13,9 @@ Decks pro Firma).
   (lokal: Launch-Konfiguration `prototypen` → http://localhost:4300/werdegang/).
 - Nach jeder Phase: Build und Tests grün, Ergebnis im Browser prüfen (Launch-Konfiguration `app`,
   sobald vorhanden), Akzeptanzkriterien der Phase abhaken. Commits nur, wenn der User zustimmt.
+- Zweites Angular-Projekt im Workspace: `slide-creator/` (Editor für Decks/Folien, lokale Node-API
+  in `slide-creator/server/`, Launch-Konfiguration `slide-creator` → http://localhost:4400).
+  `ng`-Befehle immer mit Projektnamen (`this-is-me` bzw. `slide-creator`) aufrufen.
 
 ## Konventionen
 

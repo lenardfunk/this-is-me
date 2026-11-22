@@ -1,0 +1,245 @@
+@let f = fm();
+<header class="head">
+  <span class="layout-icon icon">{{ info()?.icon ?? 'help' }}</span>
+  <div>
+    <div class="layout-name">{{ info()?.name ?? layout() }} · <code>{{ f['id'] }}</code></div>
+    <div class="layout-desc">{{ info()?.description }}</div>
+  </div>
+</header>
+
+<sc-text label="Titel" [value]="f['title']" (valueChange)="set(['title'], $event ?? '')" [hint]="companyHint" />
+<sc-text label="Kicker (kleine Zeile über dem Titel)" [optional]="true" [value]="f['kicker']" (valueChange)="set(['kicker'], $event)" />
+
+@switch (layout()) {
+  <!-- ---------------------------------------------------------------- hero -->
+  @case ('hero') {
+    <sc-text label="Untertitel / Rolle" [value]="f['subtitle']" (valueChange)="set(['subtitle'], $event ?? '')" />
+    <sc-text label="Ort" [optional]="true" [value]="f['location']" (valueChange)="set(['location'], $event)" />
+    <sc-media label="Porträt" [value]="f['photo']" (valueChange)="set(['photo'], $event)" />
+    <sc-media label="Rückseite (Easter Egg)" [optional]="true" [value]="f['photoBack']" (valueChange)="set(['photoBack'], $event)" />
+  }
+
+  <!-- ---------------------------------------------------------------- journey -->
+  @case ('journey') {
+    <section class="section">
+      <h3>Foto</h3>
+      <sc-media-path label="Landschaftsfoto" [value]="f['image']" (valueChange)="set(['image'], $event ?? '')" />
+      <div class="row size">
+        <sc-number label="Breite (px)" [value]="f['imageSize']?.[0]" (valueChange)="set(['imageSize', 0], $event ?? 1)" />
+        <sc-number label="Höhe (px)" [value]="f['imageSize']?.[1]" (valueChange)="set(['imageSize', 1], $event ?? 1)" />
+        <button type="button" class="btn small" (click)="readImageSize()"><span class="icon">straighten</span> Aus Bild lesen</button>
+      </div>
+      @if (f['image']) {
+        <sc-journey-map
+          [image]="f['image']"
+          [imageSize]="f['imageSize']"
+          [stations]="$any(stations())"
+          [secret]="f['secret']?.at"
+          [(target)]="mapTarget"
+          (picked)="onMapPick($event)"
+        />
+      }
+    </section>
+
+    <section class="section">
+      <h3>Stationen</h3>
+      @for (s of stations(); track $index; let i = $index, first = $first, last = $last) {
+        <div class="sub-card" [class.hidden-station]="stationFlag('hide', s['id'])">
+          <div class="sub-card-head">
+            <span class="num">{{ i + 1 }}</span> {{ s['title'] }}
+            @if (s['summit']) {
+              <span class="badge accent">Gipfel</span>
+            }
+            <span class="spacer"></span>
+            <button type="button" class="btn ghost icon-only" title="Nach oben" [disabled]="first" (click)="shift(['stations'], i, -1)"><span class="icon">arrow_upward</span></button>
+            <button type="button" class="btn ghost icon-only" title="Nach unten" [disabled]="last" (click)="shift(['stations'], i, 1)"><span class="icon">arrow_downward</span></button>
+            <button type="button" class="btn ghost icon-only danger" title="Station löschen" [disabled]="stations().length < 2" (click)="remove(['stations'], i)"><span class="icon">delete</span></button>
+          </div>
+          <div class="row">
+            <sc-text label="Jahr / Zeitraum" [value]="s['year']" (valueChange)="set(['stations', i, 'year'], $event ?? '')" />
+            <sc-text label="ID" [value]="s['id']" (valueChange)="set(['stations', i, 'id'], $event ?? '')" />
+          </div>
+          <sc-text label="Titel" [value]="s['title']" (valueChange)="set(['stations', i, 'title'], $event ?? '')" />
+          <sc-list label="Stichworte" mode="comma" [value]="s['tags']" (valueChange)="set(['stations', i, 'tags'], $event)" />
+          <sc-point [value]="s['at']" (valueChange)="set(['stations', i, 'at'], $event)" />
+          @if (i > 0) {
+            <sc-points
+              label="Zwischenpunkte des Wegs vor dieser Station"
+              [value]="s['via']"
+              (valueChange)="set(['stations', i, 'via'], $event)"
+            />
+          }
+          <div class="row checks">
+            <label class="check"><input type="checkbox" [checked]="!!s['summit']" (change)="set(['stations', i, 'summit'], $any($event.target).checked || undefined)" /> Gipfel (Fahne)</label>
+            <label class="check"><input type="checkbox" [checked]="stationFlag('hide', s['id'])" (change)="setStationFlag('hide', s['id'], $any($event.target).checked)" /> Ausblenden</label>
+            <label class="check"><input type="checkbox" [checked]="stationFlag('highlight', s['id'])" (change)="setStationFlag('highlight', s['id'], $any($event.target).checked)" /> Hervorheben</label>
+          </div>
+          <div class="field">
+            <label [for]="'deep-' + i">Vertiefung (↓)</label>
+            <select [id]="'deep-' + i" [value]="s['deepDive'] ?? ''" (change)="set(['stations', i, 'deepDive'], $any($event.target).value || undefined)">
+              <option value="">– keine –</option>
+              @for (c of childIds(); track c) {
+                <option [value]="c" [selected]="s['deepDive'] === c">{{ c }}</option>
+              }
+              @if (s['deepDive'] && !childIds().includes(s['deepDive'])) {
+                <option [value]="s['deepDive']" selected>{{ s['deepDive'] }} (keine Vertiefung dieser Folie!)</option>
+              }
+            </select>
+            <span class="hint">Auswahl aus den Vertiefungen dieser Folie im Deck</span>
+          </div>
+        </div>
+      }
+      @if (!ownBlock()) {
+        <p class="note"><span class="icon">info</span> „Ausblenden“ und „Hervorheben“ gelten nur für dieses Deck (Overrides).</p>
+      }
+      <button type="button" class="btn" (click)="addStation()"><span class="icon">add_location_alt</span> Station hinzufügen</button>
+    </section>
+
+    <section class="section">
+      <h3>Versteckte Station (Hütte)</h3>
+      <label class="check spaced"><input type="checkbox" [checked]="!!f['secret']" (change)="toggleSecret($any($event.target).checked)" /> Versteckte Station anzeigen</label>
+      @if (f['secret']; as h) {
+        <div class="row">
+          <sc-text label="Jahr / Zeile" [value]="h['year']" (valueChange)="set(['secret', 'year'], $event ?? '')" />
+          <sc-text label="Titel" [value]="h['title']" (valueChange)="set(['secret', 'title'], $event ?? '')" />
+        </div>
+        <sc-list label="Stichworte" mode="comma" [value]="h['tags']" (valueChange)="set(['secret', 'tags'], $event)" />
+        <sc-point [value]="h['at']" (valueChange)="set(['secret', 'at'], $event)" />
+      }
+    </section>
+  }
+
+  <!-- ---------------------------------------------------------------- stack -->
+  @case ('stack') {
+    <section class="section">
+      <h3>Schichten (oben = Oberfläche)</h3>
+      @for (l of list(['layers']); track $index; let i = $index, first = $first, last = $last) {
+        @let layer = $any(l);
+        <div class="sub-card">
+          <div class="sub-card-head">
+            <span class="icon">{{ layer['icon'] || 'layers' }}</span> {{ layer['label'] }}
+            <span class="spacer"></span>
+            <button type="button" class="btn ghost icon-only" title="Nach oben" [disabled]="first" (click)="shift(['layers'], i, -1)"><span class="icon">arrow_upward</span></button>
+            <button type="button" class="btn ghost icon-only" title="Nach unten" [disabled]="last" (click)="shift(['layers'], i, 1)"><span class="icon">arrow_downward</span></button>
+            <button type="button" class="btn ghost icon-only danger" title="Schicht löschen" [disabled]="list(['layers']).length < 2" (click)="remove(['layers'], i)"><span class="icon">delete</span></button>
+          </div>
+          <div class="row">
+            <sc-text label="Bezeichnung" [value]="layer['label']" (valueChange)="set(['layers', i, 'label'], $event ?? '')" />
+            <sc-text label="Icon" [optional]="true" [value]="layer['icon']" hint="Material-Symbol-Name, z. B. web, api, database" (valueChange)="set(['layers', i, 'icon'], $event)" />
+          </div>
+          <sc-list label="Technologien" mode="comma" [value]="layer['items']" (valueChange)="set(['layers', i, 'items'], $event)" />
+        </div>
+      }
+      <button type="button" class="btn" (click)="add(['layers'], { label: 'Neue Schicht', items: [] })"><span class="icon">add</span> Schicht hinzufügen</button>
+    </section>
+    <sc-number label="Schritte" [min]="1" [step]="1" [value]="f['steps']" hint="Wie viele Schritte (→) die Folie hat – z. B. eine Schicht pro Schritt aufdecken" (valueChange)="set(['steps'], $event)" />
+  }
+
+  <!-- ---------------------------------------------------------------- showcase -->
+  @case ('showcase') {
+    <sc-media label="Bild / Screenshot" [value]="f['media']" (valueChange)="set(['media'], $event)" />
+    <sc-list label="Chips (Technologien)" mode="comma" [value]="f['chips']" hint="Mit Komma trennen – idealerweise drei" (valueChange)="set(['chips'], $event)" />
+    <div class="sub-card">
+      <div class="sub-card-head">
+        <span class="icon">monitoring</span> Kennzahl
+        <span class="spacer"></span>
+        @if (f['metric']) {
+          <button type="button" class="btn ghost small danger" (click)="set(['metric'], undefined)">Entfernen</button>
+        } @else {
+          <button type="button" class="btn small" (click)="set(['metric'], { value: '', label: '' })"><span class="icon">add</span> Hinzufügen</button>
+        }
+      </div>
+      @if (f['metric']; as m) {
+        <div class="row">
+          <sc-text label="Wert" placeholder="z. B. −40 %" [value]="m['value']" (valueChange)="set(['metric', 'value'], $event ?? '')" />
+          <sc-text label="Beschriftung" [value]="m['label']" (valueChange)="set(['metric', 'label'], $event ?? '')" />
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ---------------------------------------------------------------- gallery -->
+  @case ('gallery') {
+    <section class="section">
+      <h3>Fotos (2–4)</h3>
+      @for (it of list(['items']); track $index; let i = $index, first = $first, last = $last) {
+        @let item = $any(it);
+        <div class="sub-card">
+          <div class="sub-card-head">
+            Foto {{ i + 1 }}
+            <span class="spacer"></span>
+            <button type="button" class="btn ghost icon-only" title="Nach vorne" [disabled]="first" (click)="shift(['items'], i, -1)"><span class="icon">arrow_upward</span></button>
+            <button type="button" class="btn ghost icon-only" title="Nach hinten" [disabled]="last" (click)="shift(['items'], i, 1)"><span class="icon">arrow_downward</span></button>
+            <button type="button" class="btn ghost icon-only danger" title="Foto entfernen" [disabled]="list(['items']).length <= 2" (click)="remove(['items'], i)"><span class="icon">delete</span></button>
+          </div>
+          <sc-text label="Bildunterschrift" [value]="item['caption']" (valueChange)="set(['items', i, 'caption'], $event ?? '')" />
+          <sc-media label="Foto" [value]="item['media']" (valueChange)="set(['items', i, 'media'], $event)" />
+        </div>
+      }
+      <button type="button" class="btn" [disabled]="list(['items']).length >= 4" (click)="add(['items'], { media: { type: 'image', src: '', alt: '' }, caption: '' })">
+        <span class="icon">add_photo_alternate</span> Foto hinzufügen
+      </button>
+    </section>
+  }
+
+  <!-- ---------------------------------------------------------------- closing -->
+  @case ('closing') {
+    <sc-list label="Kernpunkte" [rows]="5" [value]="f['points']" (valueChange)="set(['points'], $event)" />
+    <sc-number label="Schritte" [min]="1" [step]="1" [value]="f['steps']" hint="Optional: Punkte nacheinander aufdecken" (valueChange)="set(['steps'], $event)" />
+    <sc-media label="Bild" [optional]="true" [value]="f['image']" (valueChange)="set(['image'], $event)" />
+  }
+}
+
+<section class="section">
+  <h3>{{ layout() === 'text' ? 'Inhalt (Markdown)' : 'Fließtext (Markdown, optional)' }}</h3>
+  <sc-text
+    label="Markdown"
+    [multiline]="true"
+    [rows]="layout() === 'text' ? 10 : 3"
+    [value]="draft().body"
+    hint="**fett**, *kursiv*, - Liste, `Code`"
+    (valueChange)="setPart('body', $event)"
+  />
+</section>
+
+<section class="section">
+  <h3>Sprechernotizen</h3>
+  <sc-text
+    label="Nur in der Präsentator-Ansicht sichtbar (Markdown)"
+    [multiline]="true"
+    [rows]="7"
+    [value]="draft().notes"
+    (valueChange)="setPart('notes', $event)"
+  />
+</section>
+
+<details class="section" [open]="!!f['tile']">
+  <summary>Kachel in der Übersicht (Hub)</summary>
+  <div class="row">
+    <sc-text label="Beschriftung" [optional]="true" [value]="f['tile']?.label" (valueChange)="setObjectField(['tile'], 'label', $event)" />
+    <sc-text label="Icon" [optional]="true" hint="Material-Symbol-Name" [value]="f['tile']?.icon" (valueChange)="setObjectField(['tile'], 'icon', $event)" />
+  </div>
+  <div class="field">
+    <label for="tile-size">Größe</label>
+    <select id="tile-size" [value]="f['tile']?.size ?? ''" (change)="setObjectField(['tile'], 'size', $any($event.target).value || undefined)">
+      <option value="">Standard</option>
+      @for (s of tileSizes; track s.value) {
+        <option [value]="s.value" [selected]="f['tile']?.size === s.value">{{ s.label }}</option>
+      }
+    </select>
+  </div>
+  <sc-media-path label="Kachelbild" [optional]="true" [value]="f['tile']?.image" (valueChange)="setObjectField(['tile'], 'image', $event)" />
+</details>
+
+@if (showOverride()) {
+  <details class="section" [open]="!!override()">
+    <summary>Overrides nur für dieses Deck</summary>
+    <sc-json
+      label="Felder, die dieses Deck überschreibt (JSON)"
+      [value]="override()"
+      [rows]="5"
+      hint='Werden beim Build in die Frontmatter gemergt, z. B. { "subtitle": "…" }. null löscht ein Feld. Wird mit dem Deck gespeichert.'
+      (valueChange)="overrideChange.emit($any($event))"
+    />
+  </details>
+}
