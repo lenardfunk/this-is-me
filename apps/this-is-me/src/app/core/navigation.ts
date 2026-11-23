@@ -35,6 +35,11 @@ export function stepOf(pos: Position): number {
   return pos.sub === null ? pos.step : pos.subStep;
 }
 
+/**
+ * Walks the steps of the current block. At the end of a deep dive, `→` returns to the main slide it
+ * was opened from, on the same step (it does not advance that slide). From there the main line
+ * continues as usual.
+ */
 export function next(deck: Deck, pos: Position): Position {
   const slide = slideAt(deck, pos);
   if (!slide) return pos;
@@ -43,6 +48,7 @@ export function next(deck: Deck, pos: Position): Position {
   } else {
     const child = slide.children[pos.sub];
     if (child && pos.subStep < child.steps - 1) return { ...pos, subStep: pos.subStep + 1 };
+    return up(deck, pos);
   }
   return pos.slide < deck.slides.length - 1 ? main(pos.slide + 1) : pos;
 }

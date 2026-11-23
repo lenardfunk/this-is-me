@@ -42,10 +42,20 @@ describe('next', () => {
   it('stays on the last step of the last slide', () => {
     expect(next(deck, at(3))).toEqual(at(3));
   });
-  it('walks through the steps of a deep dive, then jumps to the next main slide', () => {
+  it('walks through the steps of a deep dive, then returns to its main slide on the same step', () => {
     expect(next(deck, at(1, 3, 1, 0))).toEqual(at(1, 3, 1, 1));
-    expect(next(deck, at(1, 3, 1, 1))).toEqual(at(2, 0));
-    expect(next(deck, at(1, 2, 0, 0))).toEqual(at(2, 0));
+    expect(next(deck, at(1, 3, 1, 1))).toEqual(at(1, 3));
+    expect(next(deck, at(1, 2, 0, 0))).toEqual(at(1, 2));
+    expect(next(deck, at(2, 0, 0, 0))).toEqual(at(2, 0));
+  });
+  it('does not start the next step of the main slide when leaving a deep dive', () => {
+    expect(next(deck, at(1, 2, 0, 0))).not.toEqual(at(1, 3));
+    expect(next(deck, at(1, 2, 0, 0))).toEqual(at(1, 2));
+    expect(next(deck, at(2, 0, 1, 0))).toEqual(at(2, 0));
+  });
+  it('continues along the main line after returning from a deep dive', () => {
+    expect(next(deck, next(deck, at(1, 2, 0, 0)))).toEqual(at(1, 3));
+    expect(next(deck, next(deck, at(1, 3, 1, 1)))).toEqual(at(2, 0));
   });
 });
 
