@@ -15,7 +15,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { action: 'next', keys: ['ArrowRight', ' ', 'PageDown'], labels: ['→', 'Leertaste', 'Bild ↓'], description: 'Weiter (roter Faden)' },
   { action: 'prev', keys: ['ArrowLeft', 'PageUp'], labels: ['←', 'Bild ↑'], description: 'Zurück' },
   { action: 'down', keys: ['ArrowDown'], labels: ['↓'], description: 'Vertiefung öffnen / nächste Vertiefung' },
-  { action: 'up', keys: ['ArrowUp'], labels: ['↑'], description: 'Vertiefung schließen / vorherige Vertiefung' },
+  { action: 'up', keys: ['ArrowUp'], labels: ['↑'], description: 'Vertiefung schließen (zurück zur Hauptfolie)' },
   { action: 'hub', keys: ['Escape'], labels: ['Esc'], description: 'Zurück zur Übersicht' },
   { action: 'overview', keys: ['z'], labels: ['Z'], description: 'Werdegang: Gesamtbild an/aus' },
   { action: 'presenter', keys: ['p'], labels: ['P'], description: 'Präsentator-Fenster öffnen' },
