@@ -1,0 +1,29 @@
+{
+  "name": "content",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "libs/content/src",
+  "tags": ["scope:shared", "type:content"],
+  "targets": {
+    "generate": {
+      "command": "node scripts/build-content.ts",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/content/**/*",
+        "{workspaceRoot}/scripts/build-content.ts",
+        "{projectRoot}/src/**/*",
+        "{workspaceRoot}/public/media/**/*"
+      ],
+      "outputs": ["{workspaceRoot}/public/generated"]
+    },
+    "watch": {
+      "command": "node scripts/build-content.ts --watch",
+      "continuous": true
+    },
+    "test": {
+      "command": "node --test scripts/",
+      "cache": true,
+      "inputs": ["{workspaceRoot}/scripts/**/*", "{projectRoot}/src/**/*"]
+    }
+  }
+}

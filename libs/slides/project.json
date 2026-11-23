@@ -1,0 +1,17 @@
+{
+  "name": "slides",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "libs/slides/src",
+  "prefix": "app",
+  "tags": ["scope:shared", "type:ui"],
+  "targets": {
+    "test": {
+      "executor": "@angular/build:unit-test",
+      "options": {
+        "tsConfig": "libs/slides/tsconfig.spec.json",
+        "buildTarget": "this-is-me:build:development"
+      }
+    }
+  }
+}

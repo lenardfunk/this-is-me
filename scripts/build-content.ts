@@ -11,7 +11,7 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 import type { z } from 'zod';
-import { BlockSchema, DeckFileSchema, LAYOUTS } from '../src/app/core/content.schema.ts';
+import { BlockSchema, DeckFileSchema, LAYOUTS } from '../libs/content/src/lib/content.schema.ts';
 import type {
   Block,
   DeckFile,
@@ -20,7 +20,7 @@ import type {
   ResolvedDeck,
   ResolvedSlide,
   SlideRef,
-} from '../src/app/core/content.schema.ts';
+} from '../libs/content/src/lib/content.schema.ts';
 
 const NOTES_MARKER = '<!-- notes -->';
 const DEFAULT_DURATION_MINUTES = 5;

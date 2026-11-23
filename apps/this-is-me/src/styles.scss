@@ -1,0 +1,18 @@
+@use '@angular/material' as mat;
+@use '../../../libs/slides/src/styles/tokens';
+@use '../../../libs/slides/src/styles/typography';
+@use './app/styles/transitions';
+
+// Angular Material is only used in the presenter view; its theme is scoped to that page.
+.presenter-theme {
+  @include mat.theme(
+    (
+      color: mat.$violet-palette,
+      typography: (
+        plain-family: 'Inter Variable, system-ui, sans-serif',
+        brand-family: 'Fraunces Variable, Georgia, serif',
+      ),
+      density: -1,
+    )
+  );
+}

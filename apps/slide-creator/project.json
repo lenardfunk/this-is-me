@@ -1,0 +1,72 @@
+{
+  "name": "slide-creator",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/slide-creator/src",
+  "prefix": "sc",
+  "tags": ["type:app"],
+  "implicitDependencies": ["content"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/slide-creator",
+        "index": "apps/slide-creator/src/index.html",
+        "browser": "apps/slide-creator/src/main.ts",
+        "tsConfig": "apps/slide-creator/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "styles": [
+          "@fontsource-variable/fraunces/index.css",
+          "@fontsource-variable/inter/index.css",
+          "material-symbols/outlined.css",
+          "apps/slide-creator/src/styles.scss"
+        ]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            { "type": "anyComponentStyle", "maximumWarning": "16kB", "maximumError": "32kB" }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "api": {
+      "command": "node --watch-path=apps/slide-creator/server --watch-path=scripts --watch-path=libs/content apps/slide-creator/server/server.ts",
+      "continuous": true
+    },
+    "serve": {
+      "executor": "@angular/build:dev-server",
+      "continuous": true,
+      "dependsOn": ["api"],
+      "options": { "port": 4400, "proxyConfig": "apps/slide-creator/proxy.conf.json" },
+      "configurations": {
+        "production": { "buildTarget": "slide-creator:build:production" },
+        "development": { "buildTarget": "slide-creator:build:development" }
+      },
+      "defaultConfiguration": "development"
+    },
+    "test": {
+      "executor": "@angular/build:unit-test",
+      "options": { "tsConfig": "apps/slide-creator/tsconfig.spec.json" }
+    },
+    "test-api": {
+      "command": "node --test apps/slide-creator/server/",
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/server/**/*",
+        "{projectRoot}/shared/**/*",
+        "{workspaceRoot}/scripts/**/*",
+        "{workspaceRoot}/content/**/*",
+        "{workspaceRoot}/libs/content/src/**/*"
+      ]
+    }
+  }
+}
