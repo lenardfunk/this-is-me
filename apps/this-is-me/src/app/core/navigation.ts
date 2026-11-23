@@ -105,6 +105,14 @@ export function directionBetween(from: Position, to: Position): 1 | -1 | 0 {
   return 0;
 }
 
+/**
+ * Axis of a position change for the slide transition. `y` when the change only opens, closes or
+ * switches a deep dive (same slide and step, different `sub`); everything else moves along `x`.
+ */
+export function axisBetween(from: Position, to: Position): 'x' | 'y' {
+  return from.slide === to.slide && from.step === to.step && from.sub !== to.sub ? 'y' : 'x';
+}
+
 // ---- URL mapping -----------------------------------------------------------------------------
 // /d/:deck/:slide[/:sub]?s=<step>&ss=<subStep>   (slide/sub are block ids)
 

@@ -1,7 +1,8 @@
 /*
  * View transitions.
- * - slide ↔ slide:  crossfade + small horizontal shift in navigation direction
- *                   (html[data-nav='slides'], html[data-dir='fwd'|'back'])
+ * - slide ↔ slide:  crossfade + small shift in navigation direction
+ *                   (html[data-nav='slides'], html[data-dir='fwd'|'back'] along the main line,
+ *                   html[data-dir='down'|'up'] into and out of a deep dive)
  * - hub ↔ slide:    browser default morph of the elements sharing a view-transition-name
  */
 @keyframes slide-out-fwd {
@@ -26,6 +27,30 @@
   from {
     opacity: 0;
     transform: translateX(-50px);
+  }
+}
+@keyframes slide-out-down {
+  to {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+}
+@keyframes slide-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+}
+@keyframes slide-out-up {
+  to {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+}
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
   }
 }
 
@@ -54,6 +79,20 @@ html[data-nav='slides'] {
   }
   &[data-dir='back']::view-transition-new(slide) {
     animation-name: slide-in-back;
+  }
+  // Deep dives: the camera goes down into them and back up, so the content enters from below
+  // on the way down and from above on the way up.
+  &[data-dir='down']::view-transition-old(slide) {
+    animation-name: slide-out-down;
+  }
+  &[data-dir='down']::view-transition-new(slide) {
+    animation-name: slide-in-down;
+  }
+  &[data-dir='up']::view-transition-old(slide) {
+    animation-name: slide-out-up;
+  }
+  &[data-dir='up']::view-transition-new(slide) {
+    animation-name: slide-in-up;
   }
 }
 

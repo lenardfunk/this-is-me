@@ -2,7 +2,7 @@ import { httpResource } from '@angular/common/http';
 import { computed, Injectable, signal } from '@angular/core';
 import type { ResolvedBlock, ResolvedDeck, ResolvedSlide } from '@this-is-me/content';
 import * as nav from './navigation';
-import { directionBetween, samePosition, START, type Position } from './navigation';
+import { axisBetween, directionBetween, samePosition, START, type Position } from './navigation';
 
 /** App-wide state: the loaded deck, the current position and the blackout flag. */
 @Injectable({ providedIn: 'root' })
@@ -12,6 +12,8 @@ export class DeckStore {
   readonly blackout = signal(false);
   /** Direction of the last position change; drives the slide transition. */
   readonly direction = signal<1 | -1 | 0>(0);
+  /** Axis of the last position change: `y` for deep dives (↓ / ↑), `x` along the main line. */
+  readonly axis = signal<'x' | 'y'>('x');
 
   private readonly resource = httpResource<ResolvedDeck>(() => {
     const id = this.deckId();
@@ -75,6 +77,7 @@ export class DeckStore {
     const current = this.position();
     if (samePosition(target, current)) return;
     this.direction.set(directionBetween(current, target));
+    this.axis.set(axisBetween(current, target));
     this.position.set(target);
   }
 

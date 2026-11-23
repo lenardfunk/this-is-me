@@ -1,5 +1,6 @@
 import type { ResolvedBlock, ResolvedSlide } from '@this-is-me/content';
 import {
+  axisBetween,
   clampPosition,
   directionBetween,
   down,
@@ -106,6 +107,21 @@ describe('direction', () => {
     expect(directionBetween(at(2), at(1, 3))).toBe(-1);
     expect(directionBetween(at(1, 2), at(1, 2))).toBe(0);
     expect(directionBetween(at(1, 2), at(1, 2, 0))).toBe(1);
+  });
+});
+
+describe('axis', () => {
+  it('is vertical for opening, closing and switching deep dives', () => {
+    expect(axisBetween(at(1, 2), at(1, 2, 0))).toBe('y');
+    expect(axisBetween(at(1, 2, 0), at(1, 2))).toBe('y');
+    expect(axisBetween(at(1, 2, 0), at(1, 2, 1))).toBe('y');
+  });
+
+  it('is horizontal for main-line moves and steps inside a deep dive', () => {
+    expect(axisBetween(at(1), at(2))).toBe('x');
+    expect(axisBetween(at(1, 0), at(1, 1))).toBe('x');
+    expect(axisBetween(at(1, 0, 0, 0), at(1, 0, 0, 1))).toBe('x');
+    expect(axisBetween(at(1, 2, 0), at(2))).toBe('x');
   });
 });
 

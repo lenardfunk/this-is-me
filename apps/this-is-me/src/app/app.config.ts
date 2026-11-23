@@ -35,7 +35,10 @@ export const appConfig: ApplicationConfig = {
           }
           const root = document.documentElement;
           root.dataset['nav'] = a.data['page'] === 'hub' || b.data['page'] === 'hub' ? 'hub' : 'slides';
-          root.dataset['dir'] = inject(DeckStore).direction() < 0 ? 'back' : 'fwd';
+          const store = inject(DeckStore);
+          const backwards = store.direction() < 0;
+          if (store.axis() === 'y') root.dataset['dir'] = backwards ? 'up' : 'down';
+          else root.dataset['dir'] = backwards ? 'back' : 'fwd';
         },
       }),
     ),
