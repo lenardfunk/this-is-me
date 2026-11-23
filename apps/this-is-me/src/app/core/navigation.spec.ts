@@ -81,8 +81,8 @@ describe('down / up', () => {
   it('up returns to the same step of the main slide', () => {
     expect(up(deck, at(1, 2, 0))).toEqual(at(1, 2));
     expect(up(deck, at(1, 3, 0, 0))).toEqual(at(1, 3));
-    expect(up(deck, at(1, 3, 1, 1))).toEqual(at(1, 3, 0, 0));
-    expect(up(deck, at(2, 0, 1))).toEqual(at(2, 0, 0, 0));
+    expect(up(deck, at(1, 3, 1, 1))).toEqual(at(1, 3));
+    expect(up(deck, at(2, 0, 1))).toEqual(at(2, 0));
     expect(up(deck, at(0))).toEqual(at(0));
   });
 });

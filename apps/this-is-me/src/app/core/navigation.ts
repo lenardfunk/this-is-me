@@ -69,7 +69,8 @@ export function down(deck: Deck, pos: Position): Position {
 
 export function up(_deck: Deck, pos: Position): Position {
   if (pos.sub === null) return pos;
-  return { ...pos, sub: pos.sub > 0 ? pos.sub - 1 : null, subStep: 0 };
+  // Always back to the main slide: sibling deep dives are unrelated to the one that was opened.
+  return { ...pos, sub: null, subStep: 0 };
 }
 
 /** Jump to a main slide/step (hub tiles, journey station clicks). Out-of-range values are clamped. */
