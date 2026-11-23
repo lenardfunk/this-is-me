@@ -29,13 +29,16 @@ export const appConfig: ApplicationConfig = {
           // Step changes only touch query params (or nothing) – no animation.
           // Hidden documents cannot render a transition (and would stall the navigation).
           const sameRoute = a.routeConfig === b.routeConfig && JSON.stringify(a.params) === JSON.stringify(b.params);
-          if (document.hidden || sameRoute) {
+          const store = inject(DeckStore);
+          // View-transition snapshots live in the top layer, above the blackout overlay inside the stage.
+          // Animating under blackout would fade the new slide in over black, so skip the animation there.
+          if (document.hidden || sameRoute || store.blackout()) {
             transition.skipTransition();
             return;
           }
           const root = document.documentElement;
           root.dataset['nav'] = a.data['page'] === 'hub' || b.data['page'] === 'hub' ? 'hub' : 'slides';
-          root.dataset['dir'] = inject(DeckStore).direction() < 0 ? 'back' : 'fwd';
+          root.dataset['dir'] = store.direction() < 0 ? 'back' : 'fwd';
         },
       }),
     ),
