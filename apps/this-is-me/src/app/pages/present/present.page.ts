@@ -20,7 +20,7 @@ import { DeckStatusComponent } from '../deck-status.component';
         }
       </app-stage>
     } @else {
-      <app-deck-status [status]="store.status()" [deckId]="deckId()" />
+      <app-deck-status [status]="store.status()" />
     }
   `,
   styles: `

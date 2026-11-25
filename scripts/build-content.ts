@@ -1,11 +1,19 @@
 /**
  * Content build: resolves decks (inheritance, block lookup, overrides, interpolation, journey
  * handling, stepLinks), validates everything against the zod schemas and writes
- * public/generated/{index.json,decks/<id>.json}.
+ * public/generated/decks/*.json.
  *
- * Run with Node's type stripping: `node scripts/build-content.ts [--watch]`
+ * Two modes (see docs/IMPLEMENTIERUNGSPLAN.md, section 2.4):
+ *  - development (default): `<id>.json` for every deck (local preview) plus `<publicId>.json`
+ *    for every live published deck
+ *  - production (`--production`, env `CONTENT_MODE=production`, or any Vercel build): only `<publicId>.json` of live published decks, nothing under
+ *    the readable deck name and no deck list, so nothing reveals what else exists
+ *
+ * Run with Node's type stripping: `node scripts/build-content.ts [--production] [--watch]`
  * (erasable TypeScript syntax only: no enums, no parameter properties).
  */
+/// <reference types="node" />
+
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
@@ -15,7 +23,7 @@ import { BlockSchema, DeckFileSchema, LAYOUTS } from '../libs/content/src/lib/co
 import type {
   Block,
   DeckFile,
-  DeckIndex,
+  Publication,
   ResolvedBlock,
   ResolvedDeck,
   ResolvedSlide,
@@ -40,8 +48,12 @@ export class ContentError extends Error {
 export interface BuildOptions {
   /** Directory containing `blocks/` and `decks/`. */
   contentDir: string;
-  /** Directory the `index.json` and `decks/` folder are written to. */
+  /** Directory the `decks/` folder is written to. */
   outDir: string;
+  /** `production` writes only the published decks under their public id. Default: `development`. */
+  mode?: 'development' | 'production';
+  /** Today as `YYYY-MM-DD` (publication expiry check); defaults to the local date. */
+  today?: string;
   /** Optional `public/` directory: if given, referenced media files are checked for existence. */
   publicDir?: string;
   /** Receives non-fatal warnings (missing media files). */
@@ -378,7 +390,29 @@ function buildStepLinks(block: ResolvedBlock, childIds: string[]): (number | nul
 
 // ---- build ---------------------------------------------------------------------------------
 
-export function buildContent(options: BuildOptions): { decks: ResolvedDeck[]; index: DeckIndex } {
+export type PublicationState = 'draft' | 'live' | 'revoked' | 'expired';
+
+/** Local date as `YYYY-MM-DD`. */
+export function localDate(date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+}
+
+/** `draft` = never published; the expiry day itself still counts as live. */
+export function publicationState(publication: Publication | undefined, today: string): PublicationState {
+  if (!publication) return 'draft';
+  if (publication.revoked) return 'revoked';
+  if (publication.expiresAt && publication.expiresAt < today) return 'expired';
+  return 'live';
+}
+
+export interface DeckPublicationReport {
+  id: string;
+  state: PublicationState;
+  publicId?: string;
+}
+
+export function buildContent(options: BuildOptions): { decks: ResolvedDeck[]; report: DeckPublicationReport[] } {
   const loader = new DeckLoader(options);
   const ids = loader.deckIds();
   if (ids.length === 0) throw new ContentError([`no decks found in ${rel(process.cwd(), loader.decksDir)}`]);
@@ -395,27 +429,45 @@ export function buildContent(options: BuildOptions): { decks: ResolvedDeck[]; in
   }
   if (problems.length) throw new ContentError([...new Set(problems)]);
 
-  const index: DeckIndex = decks.map((d) => ({
-    id: d.id,
-    title: d.title,
-    ...(d.company ? { company: d.company.name } : {}),
-    unlisted: loader.deckFiles.get(d.id)?.unlisted ?? false,
-  }));
+  const today = options.today ?? localDate();
+  const report: DeckPublicationReport[] = decks.map((d) => {
+    const publication = loader.deckFiles.get(d.id)?.publication;
+    return { id: d.id, state: publicationState(publication, today), ...(publication ? { publicId: publication.id } : {}) };
+  });
+  const owners = new Map<string, string>();
+  for (const { id, publicId } of report) {
+    if (!publicId) continue;
+    const other = owners.get(publicId.toLowerCase());
+    if (other) problems.push(`decks/${id}/deck.json: publication.id is already used by deck "${other}"`);
+    else owners.set(publicId.toLowerCase(), id);
+  }
+  if (problems.length) throw new ContentError(problems);
 
   const decksOut = path.join(options.outDir, 'decks');
   fs.rmSync(decksOut, { recursive: true, force: true });
+  fs.rmSync(path.join(options.outDir, 'index.json'), { force: true });
   fs.mkdirSync(decksOut, { recursive: true });
-  for (const deck of decks) fs.writeFileSync(path.join(decksOut, `${deck.id}.json`), JSON.stringify(deck, null, 2));
-  fs.writeFileSync(path.join(options.outDir, 'index.json'), JSON.stringify(index, null, 2));
-  return { decks, index };
+  const write = (name: string, deck: ResolvedDeck) =>
+    fs.writeFileSync(path.join(decksOut, `${name}.json`), JSON.stringify(deck, null, 2));
+  for (const deck of decks) {
+    if (options.mode !== 'production') write(deck.id, deck);
+    const entry = report.find((r) => r.id === deck.id)!;
+    if (entry.state === 'live' && entry.publicId) write(entry.publicId, deck);
+  }
+  return { decks, report };
 }
 
 // ---- CLI -----------------------------------------------------------------------------------
 
 function runOnce(options: BuildOptions): boolean {
   try {
-    const { decks } = buildContent(options);
+    const { decks, report } = buildContent(options);
     console.log(`[content] ${decks.length} deck(s) built: ${decks.map((d) => d.id).join(', ')}`);
+    if (options.mode === 'production') {
+      const live = report.filter((r) => r.state === 'live');
+      console.log(`[content] production: ${live.length} published, ${report.length - live.length} left out`);
+      for (const r of report) console.log(`[content]   ${r.id.padEnd(24)} ${r.state}${r.state === 'live' ? ` -> /d/${r.publicId}` : ''}`);
+    }
     return true;
   } catch (e) {
     if (e instanceof ContentError) {
@@ -432,6 +484,11 @@ if (import.meta.main) {
     contentDir: path.join(root, 'content'),
     outDir: path.join(root, 'public', 'generated'),
     publicDir: path.join(root, 'public'),
+    // Vercel always sets VERCEL, so a deploy can never ship the readable deck names by accident
+    mode:
+      process.argv.includes('--production') || process.env['CONTENT_MODE'] === 'production' || process.env['VERCEL']
+        ? 'production'
+        : 'development',
     warn: (m) => console.warn(`[content] warning: ${m}`),
   };
   const ok = runOnce(options);

@@ -10,7 +10,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import fs from 'node:fs';
 import path from 'node:path';
 import { ContentStore, StoreError } from './content-store.ts';
-import type { BlockDraft, NewDeckInput, PreviewRequest } from '../shared/api.types.ts';
+import type { BlockDraft, NewDeckInput, PreviewRequest, PublicationAction } from '../shared/api.types.ts';
 
 const PORT = Number(process.env['SLIDE_CREATOR_API_PORT'] ?? 4310);
 const root = path.resolve(import.meta.dirname, '..', '..', '..');
@@ -85,6 +85,15 @@ const routes: Array<[method: string, pattern: RegExp, handler: Handler]> = [
     async (req, [id]) => {
       const deck = store.saveDeck(id, await readJson(req));
       return { deck, ...store.build() };
+    },
+  ],
+  ['GET', /^\/api\/publications$/, () => store.listPublications()],
+  [
+    'PUT',
+    /^\/api\/decks\/([^/]+)\/publication$/,
+    async (req, [id]) => {
+      const item = store.updatePublication(id, await readJson<PublicationAction>(req));
+      return { item, ...store.build() };
     },
   ],
   ['GET', /^\/api\/decks\/([^/]+)\/blocks\/([^/]+)$/, (_req, [deck, block]) => store.getBlock(deck, block)],

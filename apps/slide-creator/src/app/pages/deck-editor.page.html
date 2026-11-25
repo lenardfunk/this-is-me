@@ -209,10 +209,6 @@
               </div>
               <sc-number label="Zielzeit (Minuten)" [min]="1" [value]="deck.durationMinutes" hint="Für den Timer im Präsentator-Fenster" (valueChange)="setDeck(['durationMinutes'], $event)" />
             </div>
-            <label class="check spaced">
-              <input type="checkbox" [checked]="!!deck.unlisted" (change)="setDeck(['unlisted'], $any($event.target).checked || undefined)" />
-              Nicht in der Deck-Auswahl auflisten (nur per Link erreichbar)
-            </label>
           </section>
 
           @if (deck.extends) {

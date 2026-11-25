@@ -119,11 +119,24 @@ const slideRef = z.union([
   z.strictObject({ id: kebabId, children: z.array(kebabId).optional() }),
 ]);
 
+/**
+ * Makes a deck reachable on the web under `/d/<id>` (an unguessable UUID). Decks without it are
+ * never published. Not inherited by child decks.
+ */
+export const PublicationSchema = z.strictObject({
+  id: z.uuid(),
+  /** Admin-only remark, e.g. who got the link and when. */
+  note: z.string().optional(),
+  /** `YYYY-MM-DD`; the production build leaves the deck out after this day. */
+  expiresAt: z.iso.date().optional(),
+  revoked: z.boolean().optional(),
+});
+
 export const DeckFileSchema = z.strictObject({
   id: kebabId,
   extends: kebabId.optional(),
   title: z.string().optional(),
-  unlisted: z.boolean().optional(),
+  publication: PublicationSchema.optional(),
   durationMinutes: z.number().positive().optional(),
   company: z
     .strictObject({ name: z.string().min(1), accent: z.string().optional(), logo: z.string().optional() })
@@ -140,13 +153,12 @@ export type Layout = Block['layout'];
 export type JourneyStation = z.infer<typeof StationSchema>;
 export type SecretStation = z.infer<typeof SecretStationSchema>;
 export type DeckFile = z.infer<typeof DeckFileSchema>;
+export type Publication = z.infer<typeof PublicationSchema>;
 export type SlideRef = z.infer<typeof slideRef>;
 
 export type BlockOf<L extends Layout> = Extract<Block, { layout: L }>;
 
 // ---- Build output (public/generated) -------------------------------------------------------
-
-export type DeckIndex = Array<{ id: string; title: string; company?: string; unlisted: boolean }>;
 
 export type ResolvedBlock = Block & { steps: number; bodyHtml: string; notesHtml: string };
 export type ResolvedBlockOf<L extends Layout> = Extract<ResolvedBlock, { layout: L }>;

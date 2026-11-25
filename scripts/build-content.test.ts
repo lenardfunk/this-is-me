@@ -3,16 +3,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { buildContent, ContentError, deepMerge } from './build-content.ts';
+import { buildContent, ContentError, deepMerge, publicationState } from './build-content.ts';
 
 const fixtures = path.join(import.meta.dirname, 'fixtures');
+const LIVE_ID = '11111111-1111-4111-8111-111111111111';
 
-function build(name: string) {
+function build(name: string, mode: 'development' | 'production' = 'development') {
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tim-content-'));
   try {
-    const result = buildContent({ contentDir: path.join(fixtures, name), outDir });
+    const result = buildContent({ contentDir: path.join(fixtures, name), outDir, mode, today: '2026-06-01' });
     const files = fs.readdirSync(path.join(outDir, 'decks')).sort();
-    return { ...result, outDir, files, byId: Object.fromEntries(result.decks.map((d) => [d.id, d])) };
+    const rootFiles = fs.readdirSync(outDir).sort();
+    return { ...result, outDir, files, rootFiles, byId: Object.fromEntries(result.decks.map((d) => [d.id, d])) };
   } finally {
     // outDir is only needed for the file listing above
     fs.rmSync(outDir, { recursive: true, force: true });
@@ -37,19 +39,14 @@ describe('deepMerge', () => {
 });
 
 describe('content build', () => {
-  const { byId, index, files } = build('ok');
+  const { byId, files, rootFiles } = build('ok');
 
-  it('writes one file per deck and an index', () => {
-    assert.deepEqual(files, ['base.json', 'hidden.json', 'inherit.json', 'replace.json']);
-    assert.deepEqual(
-      index.map((d) => [d.id, d.unlisted, d.company]),
-      [
-        ['base', false, undefined],
-        ['hidden', false, undefined],
-        ['inherit', true, 'ACME'],
-        ['replace', false, 'ACME'],
-      ],
-    );
+  it('writes one file per deck under its folder name, plus the live ones under their public id', () => {
+    assert.deepEqual(files, [`${LIVE_ID}.json`, 'base.json', 'hidden.json', 'inherit.json', 'old.json', 'replace.json']);
+  });
+
+  it('writes no deck list that could reveal the public ids', () => {
+    assert.deepEqual(rootFiles, ['decks']);
   });
 
   it('inherits slides, duration and merges company', () => {
@@ -108,6 +105,40 @@ describe('content build', () => {
   it('gives non-journey slides with children a link on every step, others null', () => {
     assert.deepEqual(byId['base'].slides[3].stepLinks, [0]);
     assert.deepEqual(byId['base'].slides[2].stepLinks, [null]);
+  });
+});
+
+describe('publication', () => {
+  it('reports draft, live, revoked and expired decks (the expiry day itself still counts)', () => {
+    const { report } = build('ok');
+    assert.deepEqual(
+      report.map((r) => [r.id, r.state]),
+      [
+        ['base', 'draft'],
+        ['hidden', 'revoked'],
+        ['inherit', 'live'],
+        ['old', 'expired'],
+        ['replace', 'draft'],
+      ],
+    );
+    assert.equal(publicationState({ id: LIVE_ID, expiresAt: '2026-06-01' }, '2026-06-01'), 'live');
+    assert.equal(publicationState({ id: LIVE_ID, expiresAt: '2026-05-31' }, '2026-06-01'), 'expired');
+  });
+
+  it('does not inherit the publication of the parent deck', () => {
+    const { report } = build('ok');
+    assert.equal(report.find((r) => r.id === 'replace')?.publicId, undefined);
+  });
+
+  it('production writes only the live decks under their public id', () => {
+    const { files, rootFiles } = build('ok', 'production');
+    assert.deepEqual(files, [`${LIVE_ID}.json`]);
+    assert.deepEqual(rootFiles, ['decks']);
+  });
+
+  it('rejects a public id that two decks share', () => {
+    const problems = problemsOf('err-duplicate-publication').join('\n');
+    assert.match(problems, /publication\.id is already used by deck "a"/);
   });
 });
 

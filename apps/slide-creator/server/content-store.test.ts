@@ -104,7 +104,6 @@ describe('ContentStore', () => {
       id: 'acme',
       extends: 'default',
       title: 'Bewerbung ACME',
-      unlisted: true,
       company: { name: 'ACME', accent: '#AA3300' },
     });
     const deck = JSON.parse(fs.readFileSync(path.join(tmp, 'content/decks/acme/deck.json'), 'utf8'));
@@ -112,7 +111,6 @@ describe('ContentStore', () => {
       id: 'acme',
       extends: 'default',
       title: 'Bewerbung ACME',
-      unlisted: true,
       company: { name: 'ACME', accent: '#AA3300' },
     });
     assert.deepEqual(store.build().problems, []);
@@ -181,5 +179,78 @@ describe('ContentStore', () => {
     assert.equal(store.saveMedia('Mein Foto (1).JPG', Buffer.from('x')), 'media/uploads/mein-foto-1-2.jpg');
     assert.deepEqual(store.listMedia(), ['media/uploads/mein-foto-1-2.jpg', 'media/uploads/mein-foto-1.jpg']);
     assert.throws(() => store.saveMedia('x.exe', Buffer.from('x')), StoreError);
+  });
+});
+
+describe('publication', () => {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+  const stored = (id: string) => JSON.parse(fs.readFileSync(path.join(tmp, 'content/decks', id, 'deck.json'), 'utf8'));
+  const item = (id: string) => store.listPublications().items.find((i) => i.deck === id)!;
+
+  it('lists decks with a parent but not the template, which stays unpublished', () => {
+    const { items } = store.listPublications();
+    assert.ok(items.some((i) => i.deck === 'beispiel-firma'));
+    assert.ok(!items.some((i) => i.deck === 'default'));
+    assert.equal(item('beispiel-firma').state, 'draft');
+    assert.equal(item('beispiel-firma').publication, undefined);
+  });
+
+  it('publishes with a fresh UUID and only touches the publication block', () => {
+    const before = stored('beispiel-firma');
+    const result = store.updatePublication('beispiel-firma', { action: 'publish' });
+    assert.equal(result.state, 'live');
+    assert.match(result.publication!.id, UUID);
+    assert.deepEqual({ ...stored('beispiel-firma'), publication: undefined }, { ...before, publication: undefined });
+    assert.throws(
+      () => store.updatePublication('beispiel-firma', { action: 'publish' }),
+      (e) => e instanceof StoreError && e.status === 409,
+    );
+  });
+
+  it('rotates the UUID and keeps note and expiry', () => {
+    store.updatePublication('beispiel-firma', { action: 'publish' });
+    store.updatePublication('beispiel-firma', { action: 'update', note: ' Mail an HR, 12.11. ', expiresAt: '2099-12-31' });
+    const old = item('beispiel-firma').publication!;
+    const rotated = store.updatePublication('beispiel-firma', { action: 'rotate' }).publication!;
+    assert.notEqual(rotated.id, old.id);
+    assert.equal(rotated.note, 'Mail an HR, 12.11.');
+    assert.equal(rotated.expiresAt, '2099-12-31');
+  });
+
+  it('revokes, refuses to rotate a revoked deck and publishes it again under a new UUID', () => {
+    const first = store.updatePublication('beispiel-firma', { action: 'publish' }).publication!;
+    assert.equal(store.updatePublication('beispiel-firma', { action: 'revoke' }).state, 'revoked');
+    assert.throws(() => store.updatePublication('beispiel-firma', { action: 'rotate' }), StoreError);
+    const again = store.updatePublication('beispiel-firma', { action: 'publish' });
+    assert.equal(again.state, 'live');
+    assert.notEqual(again.publication!.id, first.id);
+    assert.equal(again.publication!.revoked, undefined);
+  });
+
+  it('shows an expired deck as expired and clears note and expiry on request', () => {
+    store.updatePublication('beispiel-firma', { action: 'publish' });
+    assert.equal(store.updatePublication('beispiel-firma', { action: 'update', expiresAt: '2020-01-01' }).state, 'expired');
+    const cleared = store.updatePublication('beispiel-firma', { action: 'update', expiresAt: null, note: '' });
+    assert.equal(cleared.state, 'live');
+    assert.deepEqual(Object.keys(cleared.publication!), ['id']);
+  });
+
+  it('validates the expiry date and the action', () => {
+    store.updatePublication('beispiel-firma', { action: 'publish' });
+    assert.throws(() => store.updatePublication('beispiel-firma', { action: 'update', expiresAt: 'bald' }), StoreError);
+    assert.throws(() => store.updatePublication('beispiel-firma', { action: 'delete' } as never), StoreError);
+    assert.throws(() => store.updatePublication('default', { action: 'revoke' }), StoreError);
+  });
+
+  it('reads the production base URL from content/site.json', () => {
+    assert.equal(store.listPublications().baseUrl, undefined);
+    fs.writeFileSync(path.join(tmp, 'content/site.json'), '{ "baseUrl": "https://this-is-me.vercel.app/" }');
+    assert.equal(store.listPublications().baseUrl, 'https://this-is-me.vercel.app');
+  });
+
+  it('builds the published deck under its UUID', () => {
+    const { publication } = store.updatePublication('beispiel-firma', { action: 'publish' });
+    assert.deepEqual(store.build().problems, []);
+    assert.ok(fs.existsSync(path.join(tmp, 'public/generated/decks', `${publication!.id}.json`)));
   });
 });

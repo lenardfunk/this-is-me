@@ -10,6 +10,9 @@ import type {
   DeckSummary,
   NewDeckInput,
   PreviewRequest,
+  PublicationAction,
+  PublicationInfo,
+  PublicationList,
   SaveResult,
 } from '../../shared/api.types';
 
@@ -68,6 +71,16 @@ export class ApiService {
 
   saveDeck(id: string, deck: DeckFile) {
     return this.call(this.http.put<SaveResult & { deck: DeckFile }>(`/api/decks/${id}`, deck));
+  }
+
+  publications() {
+    return this.call(this.http.get<PublicationList>('/api/publications'));
+  }
+
+  updatePublication(deckId: string, request: PublicationAction) {
+    return this.call(
+      this.http.put<SaveResult & { item: PublicationInfo }>(`/api/decks/${deckId}/publication`, request),
+    );
   }
 
   block(deckId: string, blockId: string) {

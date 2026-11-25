@@ -5,6 +5,7 @@
   "scripts": {
     "nx": "nx",
     "content": "nx run content:generate",
+    "content:production": "node scripts/build-content.ts --production",
     "content:watch": "nx run content:watch",
     "start": "nx serve this-is-me",
     "build": "nx build this-is-me",
@@ -46,6 +47,7 @@
     "@nx/angular": "^24.0.6",
     "@nx/js": "^24.0.6",
     "@nx/workspace": "^24.0.6",
+    "@types/node": "^26.6.7",
     "concurrently": "^10.0.7",
     "gray-matter": "^4.0.3",
     "js-yaml": "^3.15.2",

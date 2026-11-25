@@ -1,5 +1,6 @@
 import { Routes, UrlMatchResult, UrlSegment } from '@angular/router';
 import { HubPage } from './pages/hub/hub.page';
+import { NotFoundPage } from './pages/not-found.page';
 import { PresentPage } from './pages/present/present.page';
 
 /** `d/:deck/:slide` and `d/:deck/:slide/:sub` share one route so the page instance is reused. */
@@ -10,8 +11,11 @@ export function presentMatcher(segments: UrlSegment[]): UrlMatchResult | null {
   return { consumed: segments, posParams };
 }
 
+/**
+ * `:deck` is the file name under `generated/decks/`: the public UUID in production, the folder name
+ * when developing locally. There is deliberately no route for `/` and `/d`.
+ */
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'd/default' },
   { path: 'd/:deck', pathMatch: 'full', component: HubPage, data: { page: 'hub' } },
   { matcher: presentMatcher, component: PresentPage, data: { page: 'present' } },
   {
@@ -20,5 +24,5 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/presenter/presenter.page').then((m) => m.PresenterPage),
     data: { page: 'presenter' },
   },
-  { path: '**', redirectTo: '' },
+  { path: '**', component: NotFoundPage, data: { page: 'not-found' } },
 ];

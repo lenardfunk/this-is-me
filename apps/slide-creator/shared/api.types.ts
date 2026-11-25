@@ -2,7 +2,7 @@
  * Types shared by the slide creator's API server and its Angular client.
  * Type-only module: no runtime code, so both sides can import it.
  */
-import type { DeckFile, SlideRef } from '@this-is-me/content';
+import type { DeckFile, Publication, SlideRef } from '@this-is-me/content';
 
 /** Where a block file lives: the shared library (`content/blocks`) or a deck's own `blocks/` folder. */
 export type BlockLocation = { kind: 'library' } | { kind: 'deck'; deck: string };
@@ -13,10 +13,38 @@ export interface DeckSummary {
   extends?: string;
   company?: string;
   accent?: string;
-  unlisted: boolean;
+  /** Publication state; `draft` if the deck was never published. */
+  state?: PublicationState;
   /** Set if the deck file cannot be read. */
   error?: string;
 }
+
+export type PublicationState = 'draft' | 'live' | 'revoked' | 'expired';
+
+/** Where the deck file stands relative to what Vercel builds: committed and pushed, or not yet. */
+export type DeployState = 'synced' | 'uncommitted' | 'unpushed';
+
+export interface PublicationInfo {
+  /** Readable id (folder name). */
+  deck: string;
+  title: string;
+  company?: string;
+  accent?: string;
+  state: PublicationState;
+  publication?: Publication;
+  /** Only known inside a git checkout; undefined for decks that were never published. */
+  deploy?: DeployState;
+}
+
+export interface PublicationList {
+  /** Production base URL from `content/site.json`; undefined until it is set. */
+  baseUrl?: string;
+  items: PublicationInfo[];
+}
+
+export type PublicationAction =
+  | { action: 'publish' | 'rotate' | 'revoke' }
+  | { action: 'update'; note?: string; expiresAt?: string | null };
 
 export interface BlockInfo {
   id: string;
@@ -57,7 +85,6 @@ export interface NewDeckInput {
   id: string;
   title?: string;
   extends?: string;
-  unlisted?: boolean;
   durationMinutes?: number;
   company?: { name?: string; accent?: string; logo?: string };
   /** Copy the effective slide list of this deck instead of inheriting it. */
@@ -76,4 +103,4 @@ export interface PreviewRequest {
   deck?: DeckFile;
 }
 
-export type { DeckFile, SlideRef };
+export type { DeckFile, Publication, SlideRef };

@@ -12,7 +12,9 @@
         "{workspaceRoot}/content/**/*",
         "{workspaceRoot}/scripts/build-content.ts",
         "{projectRoot}/src/**/*",
-        "{workspaceRoot}/public/media/**/*"
+        "{workspaceRoot}/public/media/**/*",
+        { "env": "CONTENT_MODE" },
+        { "env": "VERCEL" }
       ],
       "outputs": ["{workspaceRoot}/public/generated"]
     },

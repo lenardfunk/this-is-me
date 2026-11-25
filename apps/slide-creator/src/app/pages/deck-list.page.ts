@@ -13,6 +13,7 @@ import { KEBAB, slugify } from '../model';
     <header class="top">
       <div class="brand"><span class="icon">slideshow</span> Slide-Creator</div>
       <span class="sub">für this-is-me</span>
+      <a class="nav" routerLink="/veroeffentlichung"><span class="icon">public</span> Veröffentlichung</a>
     </header>
 
     <main>
@@ -46,8 +47,10 @@ import { KEBAB, slugify } from '../model';
               } @else {
                 <span class="badge accent">Basis-Deck</span>
               }
-              @if (d.unlisted) {
-                <span class="badge">nicht gelistet</span>
+              @if (d.state === 'live') {
+                <span class="badge accent"><span class="icon">public</span> live</span>
+              } @else if (d.state === 'revoked' || d.state === 'expired') {
+                <span class="badge warn">{{ d.state === 'revoked' ? 'widerrufen' : 'abgelaufen' }}</span>
               }
               @if (d.error) {
                 <span class="badge warn">Fehler</span>
@@ -116,7 +119,7 @@ import { KEBAB, slugify } from '../model';
               }
             </div>
           </div>
-          <label class="check"><input type="checkbox" [checked]="unlisted()" (change)="unlisted.set($any($event.target).checked)" /> Nicht in der Deck-Auswahl auflisten (nur per Link erreichbar)</label>
+          <p class="hint">Neue Decks sind zunächst nicht veröffentlicht. Den privaten Link erzeugst du unter „Veröffentlichung“.</p>
           <div class="actions">
             <button type="button" class="btn ghost" (click)="creating.set(false)">Abbrechen</button>
             <button type="submit" class="btn primary" [disabled]="!!idProblem() || busy()"><span class="icon">add</span> Deck anlegen</button>
@@ -148,6 +151,22 @@ import { KEBAB, slugify } from '../model';
     .sub {
       color: var(--muted);
       font-size: 13px;
+    }
+    .nav {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: inherit;
+      text-decoration: none;
+      .icon {
+        font-size: 18px;
+        color: var(--accent);
+      }
+      &:hover {
+        text-decoration: underline;
+      }
     }
     main {
       max-width: 1080px;
@@ -276,7 +295,6 @@ export class DeckListPage {
   protected readonly id = signal('');
   protected readonly extendsId = signal('default');
   protected readonly copySlides = signal(false);
-  protected readonly unlisted = signal(true);
 
   protected readonly defaultTitle = computed(() => (this.company() ? `Bewerbung ${this.company()}` : 'Selbstvorstellung'));
   protected readonly defaultId = computed(() => slugify(this.company()));
@@ -317,7 +335,6 @@ export class DeckListPage {
         id,
         title: this.title() || this.defaultTitle(),
         extends: extendsId,
-        unlisted: this.unlisted(),
         company: this.company() ? { name: this.company(), accent: this.accent().toUpperCase() } : undefined,
         copySlidesFrom: extendsId && this.copySlides() ? extendsId : undefined,
       });

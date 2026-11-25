@@ -10,6 +10,14 @@
     "build": {
       "executor": "@angular/build:application",
       "dependsOn": ["content:generate"],
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/public/**/*",
+        "{workspaceRoot}/content/**/*",
+        { "env": "CONTENT_MODE" },
+        { "env": "VERCEL" }
+      ],
       "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/apps/this-is-me",

@@ -5,6 +5,8 @@
  *
  * Runs with Node's type stripping (erasable TypeScript only).
  */
+import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
@@ -12,18 +14,29 @@ import {
   buildContent,
   ContentError,
   DeckLoader,
+  localDate,
   parseBlockSource,
+  publicationState,
   resolveBlockInDeck,
 } from '../../../scripts/build-content.ts';
 import { DeckFileSchema } from '../../../libs/content/src/lib/content.schema.ts';
-import type { DeckFile, ResolvedDeck, ResolvedSlide, SlideRef } from '../../../libs/content/src/lib/content.schema.ts';
+import type {
+  DeckFile,
+  Publication,
+  ResolvedDeck,
+  ResolvedSlide,
+  SlideRef,
+} from '../../../libs/content/src/lib/content.schema.ts';
 import type {
   BlockDraft,
   BlockInfo,
   BlockLocation,
   DeckDetails,
   DeckSummary,
+  DeployState,
   NewDeckInput,
+  PublicationAction,
+  PublicationList,
   SaveResult,
 } from '../shared/api.types.ts';
 
@@ -192,12 +205,124 @@ export class ContentStore {
           extends: deck.extends,
           company: deck.company?.name,
           accent: deck.company?.accent,
-          unlisted: deck.unlisted ?? false,
+          state: publicationState(deck.publication, localDate()),
         };
       } catch (e) {
-        return { id, title: id, unlisted: false, error: e instanceof ContentError ? e.problems.join('\n') : String(e) };
+        return { id, title: id, error: e instanceof ContentError ? e.problems.join('\n') : String(e) };
       }
     });
+  }
+
+  // ---- publication -------------------------------------------------------------------------
+
+  private get siteFile() {
+    return path.join(this.paths.contentDir, 'site.json');
+  }
+
+  /** Production base URL (`content/site.json` -> `{ "baseUrl": "https://…" }`), without trailing slash. */
+  private readBaseUrl(): string | undefined {
+    try {
+      const value = (JSON.parse(fs.readFileSync(this.siteFile, 'utf8')) as { baseUrl?: unknown }).baseUrl;
+      return typeof value === 'string' && /^https?:\/\//.test(value) ? value.replace(/\/+$/, '') : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Git view of the deck files: which `deck.json` have uncommitted changes, which commits are not
+   * pushed yet. `undefined` outside a git checkout (or without git); then no deploy state is shown.
+   */
+  private deployStates(): Map<string, DeployState> | undefined {
+    const cwd = path.dirname(this.paths.contentDir);
+    const git = (...args: string[]) =>
+      execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 });
+    const deckOf = (line: string) => /(?:^|\/)decks\/([^/]+)\/deck\.json$/.exec(line.trim().replace(/^"|"$/g, ''))?.[1];
+    try {
+      const dir = path.relative(cwd, path.join(this.paths.contentDir, 'decks')).split(path.sep).join('/');
+      const states = new Map<string, DeployState>();
+      let unpushed: string[] = [];
+      try {
+        unpushed = git('diff', '--name-only', '@{upstream}..HEAD', '--', dir).split('\n');
+      } catch {
+        // no upstream branch configured: cannot tell, treat as nothing unpushed
+      }
+      for (const line of unpushed) {
+        const id = deckOf(line);
+        if (id) states.set(id, 'unpushed');
+      }
+      for (const line of git('status', '--porcelain', '--untracked-files=all', '--', dir).split('\n')) {
+        const id = deckOf(line.slice(3));
+        if (id) states.set(id, 'uncommitted');
+      }
+      return states;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Every deck that can be published: all decks with a parent (templates stay private) or a publication. */
+  listPublications(): PublicationList {
+    const today = localDate();
+    const deploy = this.deployStates();
+    const loader = this.loader();
+    const items: PublicationList['items'] = [];
+    for (const id of loader.deckIds()) {
+      let deck: DeckFile;
+      try {
+        deck = loader.loadDeckFile(id);
+      } catch {
+        continue;
+      }
+      if (!deck.extends && !deck.publication) continue;
+      items.push({
+        deck: id,
+        title: deck.title ?? id,
+        company: deck.company?.name,
+        accent: deck.company?.accent,
+        state: publicationState(deck.publication, today),
+        ...(deck.publication ? { publication: deck.publication } : {}),
+        ...(deck.publication && deploy ? { deploy: deploy.get(id) ?? 'synced' } : {}),
+      });
+    }
+    return { baseUrl: this.readBaseUrl(), items };
+  }
+
+  /** Publishes, rotates or revokes a deck, or edits its note / expiry. Only touches `publication`. */
+  updatePublication(id: string, request: PublicationAction): PublicationList['items'][number] {
+    const deck = this.readDeckFile(id);
+    const current = deck.publication;
+    const state = publicationState(current, localDate());
+    let next: Publication | undefined = current;
+    switch (request?.action) {
+      case 'publish': {
+        if (state === 'live') throw new StoreError(409, [`deck "${id}" is already published`]);
+        const base: Partial<Publication> = current ?? {};
+        const { revoked: _revoked, expiresAt: _expiresAt, ...rest } = base;
+        next = { ...rest, id: randomUUID() };
+        break;
+      }
+      case 'rotate':
+        if (!current || state === 'revoked') throw new StoreError(409, [`deck "${id}" is not published`]);
+        next = { ...current, id: randomUUID() };
+        break;
+      case 'revoke':
+        if (!current) throw new StoreError(409, [`deck "${id}" was never published`]);
+        next = { ...current, revoked: true };
+        break;
+      case 'update': {
+        if (!current) throw new StoreError(409, [`deck "${id}" was never published`]);
+        const { note: _note, expiresAt: _expires, ...rest } = current;
+        const note = request.note === undefined ? current.note : request.note.trim() || undefined;
+        const expiresAt = request.expiresAt === undefined ? current.expiresAt : request.expiresAt || undefined;
+        next = { ...rest, ...(note ? { note } : {}), ...(expiresAt ? { expiresAt } : {}) };
+        break;
+      }
+      default:
+        throw new StoreError(400, ['action must be one of: publish, rotate, revoke, update']);
+    }
+    this.saveDeck(id, { ...deck, publication: next });
+    return this.listPublications().items.find((i) => i.deck === id)!;
   }
 
   /** Blocks visible to a deck: own blocks, then parent decks' blocks, then the library. */
@@ -262,7 +387,6 @@ export class ContentStore {
       id: input.id,
       ...(input.extends ? { extends: input.extends } : {}),
       title: input.title || input.id,
-      ...(input.unlisted ? { unlisted: true } : {}),
       ...(input.durationMinutes ? { durationMinutes: input.durationMinutes } : {}),
       ...(input.company?.name ? { company: input.company } : {}),
       ...(slides ? { slides } : {}),

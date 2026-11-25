@@ -7,13 +7,16 @@ Entscheidungen sind getroffen – nicht neu diskutieren. Wo etwas offen ist, ste
 
 ---
 
-## Stand (2026-11-21)
+## Stand (2026-11-24)
 
 - **Phasen 0–7 sind umgesetzt** (Build und Tests grün, im Browser gegen die Akzeptanzkriterien geprüft).
   Das Default-Deck ist mit Platzhalter-Inhalten komplett präsentierbar.
-- **Phase 8 (Deployment auf GitHub Pages) ist noch offen.** Der User überlegt sich das Deployment noch
-  genauer; vorher klären: Repo-Name, öffentlich/privat, ob Firmen-Decks mitdeployt werden
-  (siehe Abschnitt 5, Punkt 1). Nicht ohne Rückfrage starten.
+- **Deployment-Entscheidung (2026-11-24):** privates GitHub-Repo, Hosting auf **Vercel (Hobby)**.
+  Jedes Deck wird unter einer **unratbaren UUID** veröffentlicht (eine UUID pro Bewerbung); es gibt
+  keine öffentliche Startseite und keine Deck-Liste. Das Standard-Deck ist nur **Vorlage** und wird
+  nicht veröffentlicht. `/` und `/d` zeigen „nicht gefunden". Details: Abschnitt 2.5, Phase 8 und 9.
+- **Phase 8 (Veröffentlichungsmodell + Vercel)** und **Phase 9 (Ansicht „Veröffentlichung" im
+  Slide-Creator)**: Code umgesetzt; das Anlegen des Vercel-Projekts macht der User selbst (Phase 8, Schritt 4).
 - Weiterhin offen: echte Inhalte (Abschnitt 5, Punkte 2 und 3) und eine Lighthouse-Messung (Phase 7).
 
 ---
@@ -48,7 +51,8 @@ modernes Angular).
   **kein** IDE-/Terminal-Look.
 - **Visueller Stil**: hell, warm, editorial. Serifen-Headlines (Fraunces), Sans-Fließtext (Inter),
   viel Weißraum, **eine** Akzentfarbe (pro Firma überschreibbar). Keine Admin-Panel-Optik.
-- Offline/PWA: **nicht** nötig. Deployment später auf **GitHub Pages**.
+- Offline/PWA: **nicht** nötig. Deployment auf **Vercel**, Quelle in einem **privaten** Repo
+  (siehe 2.5). Kein öffentlicher Einstieg: jedes Deck ist nur über seinen UUID-Link erreichbar.
 
 **Hauptpfad (Standard-Deck)**, ~5 Min:
 
@@ -208,8 +212,13 @@ type Media =
   "id": "firma-x",
   "extends": "default",                 // optional; Kette erlaubt, Zyklen = Fehler
   "title": "Bewerbung Firma X",
-  "unlisted": true,                     // nicht im Index/Hub-Auswahl auflisten (URL bleibt erreichbar)
   "durationMinutes": 5,                 // Zielzeit für den Timer
+  "publication": {                      // optional; ohne diesen Block wird das Deck NICHT veröffentlicht
+    "id": "3f9c2b7e-81a4-4d0e-9b56-c7e1a02d4f18",  // UUID = öffentlicher Pfad, wird vom Slide-Creator erzeugt
+    "note": "Per Mail an Personalabteilung, 12.11.", // nur für den Admin
+    "expiresAt": "2026-12-31",          // optional; danach lässt der Produktions-Build das Deck weg
+    "revoked": false                    // true = vom Netz nehmen (UUID bleibt zur Anzeige stehen)
+  },
   "company": { "name": "Firma X", "accent": "#0F6E56", "logo": "media/firma-x.svg" },
   "slides": [                           // ersetzt (nicht merged) die Liste des Eltern-Decks
     "hallo",
@@ -246,13 +255,24 @@ type Media =
    lesbare Meldung (Datei + Pfad + Problem) und Exit-Code ≠ 0.
 8. Markdown-Body und Notizen werden mit `marked` zu HTML (`bodyHtml`, `notesHtml`).
 
+`publication` wird **nicht vererbt** (gehört nur dem Deck, in dessen `deck.json` es steht). Die UUIDs
+müssen über alle Decks eindeutig sein (Build-Fehler sonst).
+
 ### 2.4 Build-Ausgabe (`public/generated/`)
 
-```ts
-// index.json
-type DeckIndex = Array<{ id: string; title: string; company?: string; unlisted: boolean }>;
+Es gibt **keine** `index.json` mehr: Eine Deck-Liste würde alle UUIDs verraten.
+Dateiname und URL-Parameter sind je nach Modus:
 
-// decks/<id>.json
+| Modus | Befehl | geschrieben nach `decks/` |
+|---|---|---|
+| Entwicklung (Standard) | `npm run content` | `<id>.json` für **jedes** Deck (lokale Vorschau, Slide-Creator) und zusätzlich `<publicId>.json` für jedes Deck mit `publication` |
+| Produktion | `npm run content:production`, oder jeder Build mit `CONTENT_MODE=production` bzw. auf Vercel (`VERCEL` ist dort immer gesetzt) | **nur** `<publicId>.json` der veröffentlichten Decks (nicht widerrufen, nicht abgelaufen); nichts unter dem lesbaren Namen |
+
+`ResolvedDeck.id` ist in beiden Fällen der lesbare Ordnername. Die App behandelt den URL-Parameter
+`:deck` einfach als Dateinamen (`generated/decks/<param>.json`).
+
+```ts
+// decks/<id|publicId>.json
 type ResolvedDeck = {
   id: string; title: string; durationMinutes: number;
   company?: { name: string; accent?: string; logo?: string };
@@ -261,6 +281,24 @@ type ResolvedDeck = {
 type ResolvedSlide = ResolvedBlock & { children: ResolvedBlock[]; stepLinks: (number | null)[] };
 type ResolvedBlock = Block & { steps: number; bodyHtml: string; notesHtml: string };
 ```
+
+### 2.5 Veröffentlichung (Zugriffsschutz durch unratbare Links)
+
+Schutzmodell: **Capability-URL**. Wer den Link zu einem Deck hat, sieht es; ohne Link gibt es keinen
+Weg dorthin. Das ist kein Passwortschutz, Weiterleitungen des Links sind möglich (bewusst akzeptiert).
+
+- **Lesbare ID bleibt der Ordnername** (`content/decks/acme/`, Vererbung, Slide-Creator). Die
+  **`publicId`** (UUID v4, 122 Bit) ist nur der Pfad im Netz: `https://<host>/d/<uuid>` und
+  `/presenter/<uuid>`. **Eine UUID pro Bewerbung**, nicht pro Firma.
+- **Kein Einstieg**: `/`, `/d` und alle unbekannten Pfade zeigen „nicht gefunden"; es gibt weder
+  Deck-Liste noch `index.json`. Das Standard-Deck ist Vorlage und hat keine `publication`.
+- **Quelle bleibt privat** (privates GitHub-Repo, Vercel baut daraus). Die Registry (UUID, Notiz,
+  Ablauf) steht in den `deck.json`-Dateien im privaten Repo. Ein öffentliches Repo würde alles verraten.
+- **Widerruf/Rotation**: UUID neu erzeugen bzw. `revoked` setzen; mit dem nächsten Deploy ist der alte
+  Link tot (die Datei `<uuid>.json` existiert dann nicht mehr).
+- **Hygiene**: `noindex` (Meta-Tag und `X-Robots-Tag`-Header), `Referrer-Policy: no-referrer`,
+  keine Sitemap, `robots.txt` ohne Pfade. Firmenspezifische Mediendateien neutral benennen
+  (Dateinamen in `public/media/` sind im Netz abrufbar; automatisches Umziehen steht im Backlog).
 
 ---
 
@@ -320,7 +358,7 @@ dann (falls der User Commits freigegeben hat) ein Commit `feat: phase N – …`
      `imageSize: [851, 577]`), Gipfel-Titel `"{{company.name}}"`.
    - Bilder, die noch fehlen: `type: svg` mit einfachen Platzhalter-SVGs in `public/media/placeholder/`.
    - Decks: `default` (Hauptpfad aus Abschnitt 0, ohne `company`) und ein Beispiel
-     `beispiel-firma` (`extends: default`, `unlisted: true`, ein eigener Block
+     `beispiel-firma` (`extends: default`, ein eigener Block
      `warum-ihr.md`, ein `overrides`-Eintrag mit `hide`).
 4. `scripts/build-content.test.ts` (node:test) mit Fixtures in `scripts/fixtures/`:
    Vererbung, Slides-Ersetzung, Block-Shadowing, Override-Merge (Array ersetzt, `null` löscht),
@@ -466,25 +504,57 @@ in beide Richtungen; Blackout synchron; Reload eines Fensters synchronisiert sic
 - Tastatur-Hilfe: `?` zeigt ein Overlay mit allen Tasten.
 - Zielgruppen-Akzent: prüfen, dass `company.accent` überall greift (Chips, Pins, Weg, Hub-Kachel).
 - Fokus- und Kontrastprüfung, `alt`-Texte, `prefers-reduced-motion` (Kamera springt ohne Fahrt).
-- Ladezustand/Fehlerzustand für unbekanntes Deck („Deck nicht gefunden" + Link zum Hub).
+- Ladezustand/Fehlerzustand für unbekanntes Deck („Deck nicht gefunden", ohne Link und ohne die
+  angefragte ID zu wiederholen).
 - Lighthouse kurz prüfen (Bilder in passender Größe, `loading="lazy"` außer Folie 1).
 
-### Phase 8 – Deployment auf GitHub Pages
+### Phase 8 – Veröffentlichungsmodell und Deployment auf Vercel
 
-**Vorher den User fragen** (Repo-Name, öffentlich/privat, ob Firmen-Decks mit deployt werden
-sollen – siehe Offene Punkte). Dann:
-1. GitHub-Actions-Workflow `.github/workflows/deploy.yml`: Node installieren, `npm ci`,
-   `npm run build -- --base-href /<repo>/`, `index.html` nach `404.html` kopieren (SPA-Fallback),
-   Upload via `actions/upload-pages-artifact` + `actions/deploy-pages`.
-2. Pfade prüfen: alle Medien relativ (`media/…`, `generated/…`), damit `base-href` greift.
+Hintergrund und Schutzmodell: Abschnitt 2.5.
 
-**Akzeptanz:** Deployte Seite lädt, Deep-Link-Reload (`/<repo>/d/default/weg?s=2`) funktioniert.
+1. **Schema** (`libs/content`): `publication` in `DeckFileSchema` (Abschnitt 2.3); `unlisted` und
+   `DeckIndex` entfallen (es gibt keine Deck-Liste mehr).
+2. **Build** (`scripts/build-content.ts`): Modus `development`/`production` (Abschnitt 2.4), Prüfung auf
+   doppelte UUIDs, Ausgabe einer Übersicht (veröffentlicht / übersprungen und warum). Moduswahl:
+   `--production`, `CONTENT_MODE=production` oder die von Vercel gesetzte Variable `VERCEL`
+   (so kann ein Deploy die lesbaren Namen nie versehentlich mitliefern); npm-Script `content:production`
+   für die lokale Prüfung. `nx build` hängt weiter von `content:generate` ab, das den Modus aus der Umgebung nimmt.
+3. **App**: `/`, `/d` und `**` zeigen „nicht gefunden" (kein Redirect auf ein Standard-Deck); der
+   Fehlerzustand eines Decks hat keinen Link mehr. `<meta name="robots" content="noindex">` und
+   `<meta name="referrer" content="no-referrer">` in `index.html`.
+4. **Vercel** (macht der User, Anleitung in `README.md`): privates Repo im **persönlichen** GitHub-Account,
+   Vercel-Hobby-Account mit GitHub verbinden, Projekt importieren. `vercel.json` im Repo setzt Build-Befehl
+   (`npm run build`; der Content-Build läuft dabei automatisch im Produktionsmodus), Output-Ordner, SPA-Rewrite (nicht für `generated/` und
+   `media/`, damit unbekannte JSON-Dateien ein echtes 404 liefern) und die Header
+   (`X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`). Jeder Push auf den Hauptzweig deployt.
+
+**Akzeptanz:** `npm run content:production` erzeugt nur `decks/<uuid>.json` der veröffentlichten Decks
+(Test in `scripts/build-content.test.ts`); `/`, `/d` und `/d/default` zeigen „nicht gefunden"; `/d/<uuid>`
+zeigt das Deck; Vercel-Deployment erreichbar, Deep-Link-Reload funktioniert, `/d/default` ist dort 404.
+
+### Phase 9 – Ansicht „Veröffentlichung" im Slide-Creator
+
+Seite `/veroeffentlichung` (Link in der Kopfzeile der Deck-Liste). Pro Deck mit Eltern-Deck (Vorlagen ohne
+`extends` erscheinen nicht) eine Karte: lesbare ID, Titel, Status (Entwurf, Live, Abgelaufen, Widerrufen;
+zusätzlich „Nicht committet" / „Nicht gepusht", ermittelt über `git`), voller Link und Präsentator-Link
+mit Kopieren-Button, Notiz („an wen, wann"), Ablaufdatum. Aktionen: **Veröffentlichen** (erzeugt UUID),
+**Link rotieren** (neue UUID, mit Rückfrage), **Widerrufen** (mit Rückfrage), **Neu veröffentlichen**.
+Die Basis-URL der Produktion (`https://….vercel.app`) steht in `content/site.json` (`{ "baseUrl": … }`),
+bis dahin gilt ein Platzhalter und die Ansicht weist darauf hin.
+API: `GET /api/publications`, `PUT /api/decks/:id/publication` (`action: publish | rotate | revoke | update`).
+
+**Akzeptanz:** Alle Aktionen schreiben nur den `publication`-Block der jeweiligen `deck.json`; Tests in
+`apps/slide-creator/server/content-store.test.ts`.
 
 ---
 
 ## 4. Backlog (nicht Teil der ersten Umsetzung)
 
-- **Erkunden-Modus** (`/`): öffentliche Startseite mit allen gelisteten Inhalten, scrollbar.
+- **Erkunden-Modus** (`/`): öffentliche Startseite mit allen öffentlichen Inhalten, scrollbar
+  (derzeit bewusst nicht vorhanden, siehe 2.5).
+- Medien einer Firma beim Produktions-Build automatisch nach `media/<publicId>/…` umziehen und die
+  Verweise im Deck-JSON umschreiben (derzeit: Dateien neutral benennen).
+- Optional: Deck-JSON mit einem Schlüssel im URL-Fragment verschlüsseln (Host kann nichts mitlesen).
 - **Skill-Graph** als `component`-Media (Skills ↔ Projekte ↔ Stationen, Klick hebt Verbindungen hervor).
 - **„Diese App"-Vertiefung** mit echter Architektur-Grafik (Content-Pipeline, Signals-Store, Sync).
 - PDF-Export per Print-CSS als „Leave-behind".
@@ -492,9 +562,8 @@ sollen – siehe Offene Punkte). Dann:
 
 ## 5. Offene Punkte (den User fragen, wenn relevant)
 
-1. **Firmen-Decks öffentlich?** Bei einem öffentlichen GitHub-Pages-Deployment sind auch
-   `unlisted`-Decks per URL abrufbar (und im Repo sichtbar). Alternativen: Firmen-Decks nur lokal
-   präsentieren, privates Repo, oder Firmen-Decks per Build-Flag ausschließen.
+1. ~~Firmen-Decks öffentlich?~~ **Entschieden (2026-11-24):** privates Repo, Vercel, UUID-Pfad pro
+   Bewerbung, Standard-Deck nicht veröffentlicht (Abschnitt 2.5).
 2. Echte Inhalte: Stationen (Jahr, Titel, 2–3 Stichworte), zwei Projekte mit Bild + Kennzahl,
    Porträt + Rückseitenfoto, 2–4 „Mensch"-Fotos, Tech-Stack pro Schicht.
 3. Positionen der Stationen auf dem Foto ggf. nach echten Inhalten feinjustieren (Prototyp hat

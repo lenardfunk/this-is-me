@@ -18,11 +18,12 @@ Nx-Workspace mit zwei Apps und zwei Libs:
 | Befehl                 | Zweck                                                                      |
 | ---------------------- | -------------------------------------------------------------------------- |
 | `npm start`            | Content-Watcher + Dev-Server der App auf Port 4200 (`nx serve this-is-me`) |
-| `npm run build`        | Content bauen und Produktions-Build der App                                |
+| `npm run build`        | Content bauen und Produktions-Build der App (Deploy macht Vercel)          |
 | `npm test`             | Tests der App                                                              |
 | `npm run test:slides`  | Tests der Folien-Lib (Layouts, Tastatur)                                   |
 | `npm run test:content` | Tests der Content-Pipeline und der Creator-API (`node --test`)             |
 | `npm run content`      | Nur den Content bauen (`content/` → `public/generated/`)                   |
+| `npm run content:production` | Content im Produktionsmodus: nur veröffentlichte Decks unter ihrer UUID |
 | `npm run creator`      | Slide-Creator inkl. API auf Port 4400 (`nx serve slide-creator`)           |
 | `npm run test:creator` | Tests des Slide-Creators                                                   |
 | `npm run test:all`     | Alle Tests aller Projekte (mit Nx-Cache)                                   |
@@ -59,7 +60,30 @@ eine parallel laufende Präsentations-App (`npm start`) die Änderung sofort zei
 
 Neues Firmen-Deck: im Slide-Creator „Neues Deck“ – oder von Hand einen Ordner
 `content/decks/<firma>/` mit einer `deck.json` anlegen (siehe `content/decks/beispiel-firma/`),
-dann `/d/<firma>` öffnen.
+dann `/d/<firma>` öffnen (lokal ist der Ordnername die URL; `/` und `/d` zeigen „nicht gefunden“).
+
+## Veröffentlichung (Vercel)
+
+Gehostet wird auf Vercel, die Quelle liegt in einem **privaten** GitHub-Repo. Es gibt keine öffentliche
+Startseite und keine Deck-Liste: Jede Bewerbung ist nur unter ihrer eigenen UUID erreichbar
+(`https://<projekt>.vercel.app/d/<uuid>`). Das Standard-Deck ist eine Vorlage und wird nicht veröffentlicht.
+Konzept: [`docs/IMPLEMENTIERUNGSPLAN.md`](docs/IMPLEMENTIERUNGSPLAN.md), Abschnitt 2.5.
+
+- **Link erzeugen, rotieren, widerrufen:** im Slide-Creator unter „Veröffentlichung“
+  (http://localhost:4400/veroeffentlichung). Das schreibt nur den `publication`-Block der jeweiligen
+  `deck.json`. Live geht es erst nach **Commit und Push** (Vercel deployt jeden Push).
+- **Produktions-Build lokal prüfen:** `npm run content:production` schreibt nur die veröffentlichten Decks
+  als `public/generated/decks/<uuid>.json`. Danach `npm run content` (oder `npm start`) für die lokale Arbeit
+  zurück in den Entwicklungsmodus. Auf Vercel gilt der Produktionsmodus automatisch.
+- **Medien einer Firma neutral benennen** (nicht `media/<firma>.svg`): Dateinamen aus `public/media/` sind im Netz
+  abrufbar, wenn man sie kennt.
+- **Einmalig einrichten:**
+  1. Repo auf GitHub **privat** und im **persönlichen** Account anlegen (private Organisations-Repos gehen
+     im kostenlosen Hobby-Plan nicht) und pushen.
+  2. Auf vercel.com mit GitHub anmelden (Hobby-Plan), „Add New → Project“, das Repo auswählen und der Vercel-GitHub-App
+     Zugriff geben. Die Einstellungen kommen aus [`vercel.json`](vercel.json), nichts weiter eintragen.
+  3. Nach dem ersten Deploy die Adresse in `content/site.json` eintragen:
+     `{ "baseUrl": "https://<projekt>.vercel.app" }`. Der Slide-Creator zeigt dann vollständige Links.
 
 ## Bedienung
 

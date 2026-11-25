@@ -1,16 +1,17 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
 
-/** Loading / error placeholder shown instead of a page while its deck is not available. */
+/**
+ * Loading / error placeholder shown instead of a page while its deck is not available.
+ * The error state deliberately has no link and does not repeat the requested id: decks are only
+ * reachable through their private link, so there is nowhere to send visitors.
+ */
 @Component({
   selector: 'app-deck-status',
-  imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (status() === 'error') {
-      <h1>Deck nicht gefunden</h1>
-      <p>Ein Deck „{{ deckId() }}" gibt es nicht.</p>
-      <a routerLink="/">Zum Standard-Deck</a>
+      <h1>Nicht gefunden</h1>
+      <p>Diese Seite gibt es nicht. Prüfe den Link.</p>
     } @else {
       <p role="status">Lädt …</p>
     }
@@ -36,17 +37,8 @@ import { RouterLink } from '@angular/router';
       margin: 0;
       color: var(--muted);
     }
-    a {
-      margin-top: 12px;
-      padding: 10px 22px;
-      border-radius: 999px;
-      background: var(--accent);
-      color: #fff;
-      text-decoration: none;
-    }
   `,
 })
 export class DeckStatusComponent {
   readonly status = input.required<'idle' | 'loading' | 'ready' | 'error'>();
-  readonly deckId = input<string | null>(null);
 }
