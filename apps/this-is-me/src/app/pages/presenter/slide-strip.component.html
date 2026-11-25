@@ -1,0 +1,79 @@
+<ol class="slides">
+  @for (entry of tree(); track entry.slide; let i = $index) {
+    <li [class.current]="isCurrent(entry)" [class.done]="isDoneSlide(entry)">
+      <button
+        type="button"
+        class="slide"
+        [attr.aria-current]="isCurrent(entry) ? 'step' : null"
+        (click)="jump.emit(slidePos(entry.slide))"
+      >
+        <span class="num">{{ i + 1 }}</span>
+        <span class="title">{{ entry.title }}</span>
+      </button>
+
+      @if (isCurrent(entry)) {
+        <div class="outline">
+          <ng-container [ngTemplateOutlet]="outline" [ngTemplateOutletContext]="{ $implicit: entry }" />
+        </div>
+      } @else if (entry.steps.length > 1 || entry.dives.length > 0) {
+        <div class="popover" role="group" [attr.aria-label]="'Schritte von ' + entry.title">
+          <ng-container [ngTemplateOutlet]="outline" [ngTemplateOutletContext]="{ $implicit: entry }" />
+        </div>
+      }
+    </li>
+  }
+</ol>
+
+<ng-template #outline let-entry>
+  @if (entry.steps.length > 1) {
+    <ul class="steps">
+      @for (st of entry.steps; track st.step) {
+        <li>
+          <button
+            type="button"
+            class="step"
+            [class.done]="isDoneStep(entry.slide, st.step)"
+            [class.current]="isCurrentStep(entry.slide, st.step)"
+            [attr.aria-current]="isCurrentStep(entry.slide, st.step) ? 'step' : null"
+            (click)="jump.emit(stepPos(entry.slide, st.step))"
+          >
+            {{ st.label }}
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (entry.dives.length > 0) {
+    <div class="dives">
+      @for (dive of entry.dives; track dive.sub) {
+        <button
+          type="button"
+          class="chip"
+          [class.current]="isActiveDive(entry.slide, dive)"
+          (click)="jump.emit(divePos(entry.slide, dive))"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">arrow_downward</span>
+          {{ dive.title }}
+        </button>
+        @if (isActiveDive(entry.slide, dive) && dive.steps.length > 1) {
+          <ul class="steps nested">
+            @for (st of dive.steps; track st.step) {
+              <li>
+                <button type="button" class="step" (click)="jump.emit(divePos(entry.slide, dive, st.step))">
+                  {{ st.label }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      }
+    </div>
+    @if (isCurrent(entry) && position().sub !== null) {
+      <button type="button" class="back" (click)="jump.emit(backPos())">
+        <span class="material-symbols-outlined" aria-hidden="true">arrow_upward</span>
+        Zurück zur Hauptfolie
+      </button>
+    }
+  }
+</ng-template>

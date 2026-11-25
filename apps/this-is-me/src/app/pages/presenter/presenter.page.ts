@@ -1,13 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, input, signal, untracked } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DeckStore } from '../../core/deck.store';
+import { jumpEntries, type Position } from '../../core/navigation';
 import { SlideHost, StageComponent, useDeckKeys } from '@this-is-me/slides';
 import { SyncService } from '../../core/sync.service';
 import { formatMmSs, timerState } from '../../core/timer';
 import { DeckStatusComponent } from '../deck-status.component';
+import { JumpPaletteComponent, type JumpPaletteData } from './jump-palette.component';
+import { SlideStripComponent } from './slide-strip.component';
 
 const HINT_KEY = 'this-is-me:presenter-hint-seen';
 
@@ -18,6 +22,7 @@ const HINT_KEY = 'this-is-me:presenter-hint-seen';
     StageComponent,
     SlideHost,
     DeckStatusComponent,
+    SlideStripComponent,
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
@@ -36,6 +41,7 @@ export class PresenterPage {
 
   protected readonly store = inject(DeckStore);
   private readonly sync = inject(SyncService);
+  private readonly dialog = inject(Dialog);
 
   protected readonly showHint = signal(readHintFlag());
 
@@ -58,7 +64,6 @@ export class PresenterPage {
   // ---- derived view state --------------------------------------------------------------------
   protected readonly slide = this.store.currentSlide;
   protected readonly block = this.store.currentBlock;
-  protected readonly inDeepDive = computed(() => this.store.position().sub !== null);
   protected readonly stepLabel = computed(() => {
     const slide = this.slide();
     const block = this.block();
@@ -73,16 +78,17 @@ export class PresenterPage {
     effect(() => this.store.selectDeck(this.deckId()));
     this.sync.start('presenter');
 
-    // The timer starts with the first navigation step (local or remote).
+    // The timer starts with the first navigation step (local or remote). A jump from the list does not start it.
     let first = true;
     effect(() => {
       this.store.position();
+      const change = this.store.lastChange();
       untracked(() => {
         if (first) {
           first = false;
           return;
         }
-        if (!this.started()) this.startTimer();
+        if (change === 'step' && !this.started()) this.startTimer();
       });
     });
 
@@ -95,8 +101,30 @@ export class PresenterPage {
       down: () => this.store.down(),
       up: () => this.store.up(),
       blackout: () => this.store.toggleBlackout(),
+      jump: () => this.openJump(),
     });
   }
+
+  /** Quick jump to any slide, step or deep dive (G or the button in the slide list). */
+  protected openJump() {
+    const deck = this.store.deck();
+    if (!deck || this.paletteOpen) return;
+    this.paletteOpen = true;
+    const ref = this.dialog.open<Position, JumpPaletteData, JumpPaletteComponent>(JumpPaletteComponent, {
+      data: { deck, entries: jumpEntries(deck), current: this.store.position() },
+      width: '640px',
+      maxWidth: '92vw',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      panelClass: 'jump-palette-panel',
+    });
+    ref.closed.subscribe((pos) => {
+      this.paletteOpen = false;
+      if (pos) this.store.jumpTo(pos);
+    });
+  }
+
+  private paletteOpen = false;
 
   protected startTimer() {
     this.started.set(true);
@@ -117,20 +145,6 @@ export class PresenterPage {
     this.elapsedBefore.set(0);
     this.runningSince.set(null);
     this.started.set(false);
-  }
-
-  protected isCurrent(slideIndex: number) {
-    return this.store.position().slide === slideIndex;
-  }
-
-  protected closeDeepDive() {
-    const pos = this.store.position();
-    if (pos.sub !== null) this.store.setPosition({ ...pos, sub: null, subStep: 0 });
-  }
-
-  protected isDeepDiveActive(index: number) {
-    const pos = this.store.position();
-    return pos.sub === index;
   }
 
   protected dismissHint() {

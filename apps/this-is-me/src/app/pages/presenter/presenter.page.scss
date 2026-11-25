@@ -158,46 +158,10 @@ aside {
   font: 400 18px/1.2 var(--font-serif);
 }
 
-.dives {
-  ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .active {
-    background: var(--accent-soft);
-  }
-}
-
-.segments {
+.card-head {
   display: flex;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  li {
-    flex: 1;
-  }
-  button {
-    display: block;
-    width: 100%;
-    height: 14px;
-    border: 0;
-    border-radius: 7px;
-    background: var(--line);
-    cursor: pointer;
-
-    &.done {
-      background: color-mix(in srgb, var(--accent) 45%, white);
-    }
-    &.current {
-      background: var(--accent);
-    }
-  }
+  align-items: center;
+  justify-content: space-between;
 }
 
 .hint {

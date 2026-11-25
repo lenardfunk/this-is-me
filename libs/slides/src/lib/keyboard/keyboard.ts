@@ -1,6 +1,6 @@
 import { DestroyRef, inject } from '@angular/core';
 
-export type KeyAction = 'next' | 'prev' | 'down' | 'up' | 'hub' | 'presenter' | 'blackout' | 'help' | 'overview';
+export type KeyAction = 'next' | 'prev' | 'down' | 'up' | 'hub' | 'presenter' | 'blackout' | 'help' | 'overview' | 'jump';
 
 export interface KeyBinding {
   action: KeyAction;
@@ -20,6 +20,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { action: 'overview', keys: ['z'], labels: ['Z'], description: 'Werdegang: Gesamtbild an/aus' },
   { action: 'presenter', keys: ['p'], labels: ['P'], description: 'Präsentator-Fenster öffnen' },
   { action: 'blackout', keys: ['b'], labels: ['B'], description: 'Bildschirm abdunkeln' },
+  { action: 'jump', keys: ['g'], labels: ['G'], description: 'Präsentator: zu einer Stelle springen' },
   { action: 'help', keys: ['?'], labels: ['?'], description: 'Tastatur-Hilfe' },
 ];
 

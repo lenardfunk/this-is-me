@@ -4,12 +4,17 @@ import {
   clampPosition,
   directionBetween,
   down,
+  filterJumpEntries,
   goTo,
+  jumpEntries,
+  jumpTree,
   next,
+  parseJumpInput,
   positionFromUrl,
   positionToUrl,
   prev,
   up,
+  visibleSteps,
   type Position,
 } from './navigation';
 
@@ -149,5 +154,121 @@ describe('URL mapping', () => {
       const parsed = positionFromUrl(deck, { slide: commands[0], sub: commands[1], ...queryParams });
       expect(parsed).toEqual(pos);
     }
+  });
+});
+
+// ---- jump targets ----------------------------------------------------------------------------
+
+const stepped = (partial: Record<string, unknown>) => partial as unknown as ResolvedBlock;
+
+// 0: weg (journey: overview + 2 stations, station 2 opens dive "a") · 1: heute (stack, 2 steps, 3 layers)
+// 2: hero with 3 steps that do not change visually · 3: ende (1 step)
+const jumpDeck = {
+  slides: [
+    stepped({
+      id: 'weg',
+      layout: 'journey',
+      title: 'Weg',
+      steps: 3,
+      stations: [
+        { id: 's1', year: '2015', title: 'Ausbildung' },
+        { id: 's2', year: '2018', title: 'Firma A' },
+      ],
+      bodyHtml: '',
+      notesHtml: '',
+      children: [],
+      stepLinks: [null, null, 0],
+    }),
+    stepped({
+      id: 'heute',
+      layout: 'stack',
+      title: 'Heute',
+      steps: 2,
+      layers: [{ label: 'Oberfläche' }, { label: 'Schnittstellen' }, { label: 'Daten' }],
+      bodyHtml: '',
+      notesHtml: '',
+      children: [],
+      stepLinks: [null, null],
+    }),
+    stepped({ id: 'hero', layout: 'hero', title: 'Hallo', steps: 3, bodyHtml: '', notesHtml: '', children: [], stepLinks: [null, null, null] }),
+    stepped({ id: 'ende', layout: 'text', title: 'Ende', steps: 1, bodyHtml: '', notesHtml: '', children: [], stepLinks: [null] }),
+  ] as ResolvedSlide[],
+};
+jumpDeck.slides[0].children = [stepped({ id: 'a-details', layout: 'text', title: 'Firma A Details', steps: 1, bodyHtml: '', notesHtml: '' })];
+
+describe('visibleSteps', () => {
+  it('labels journey steps with overview and stations', () => {
+    expect(visibleSteps(jumpDeck.slides[0]).map((s) => s.label)).toEqual(['Überblick', '2015 · Ausbildung', '2018 · Firma A']);
+  });
+  it('labels stack steps with the layer revealed at that step', () => {
+    expect(visibleSteps(jumpDeck.slides[1]).map((s) => s.label)).toEqual(['Schnittstellen', 'Daten']);
+  });
+  it('collapses layouts without step visuals to their title', () => {
+    expect(visibleSteps(jumpDeck.slides[2])).toEqual([{ step: 0, label: 'Hallo' }]);
+  });
+});
+
+describe('jumpTree', () => {
+  it('links deep dives to the step that opens them', () => {
+    const tree = jumpTree({ slides: [jumpDeck.slides[0]] });
+    expect(tree[0].dives).toEqual([{ sub: 0, title: 'Firma A Details', linkStep: 2, steps: [{ step: 0, label: 'Firma A Details' }] }]);
+  });
+  it('defaults the link step to 0 when no step links to the dive', () => {
+    const slide = { ...jumpDeck.slides[1], children: jumpDeck.slides[0].children, stepLinks: [null, null] } as ResolvedSlide;
+    expect(jumpTree({ slides: [slide] })[0].dives[0].linkStep).toBe(0);
+  });
+});
+
+describe('jumpEntries', () => {
+  const entries = jumpEntries(jumpDeck);
+  it('lists every visible step of a stepped slide with its breadcrumb', () => {
+    expect(entries.filter((e) => e.path[0] === 'Weg').map((e) => [e.pos, e.label])).toEqual([
+      [at(0, 0), 'Überblick'],
+      [at(0, 1), '2015 · Ausbildung'],
+      [at(0, 2), '2018 · Firma A'],
+      [{ slide: 0, step: 2, sub: 0, subStep: 0 }, 'Firma A Details'],
+    ]);
+  });
+  it('lists slides without visible steps once, at step 0', () => {
+    expect(entries.filter((e) => e.label === 'Hallo')).toEqual([{ pos: at(2), path: [], label: 'Hallo' }]);
+    expect(entries.filter((e) => e.label === 'Ende')).toEqual([{ pos: at(3), path: [], label: 'Ende' }]);
+  });
+  it('never offers the hidden steps of a non-stepped layout', () => {
+    expect(entries.some((e) => e.pos.slide === 2 && e.pos.step > 0)).toBe(false);
+  });
+  it('labels a deep dive with several steps by dive and step', () => {
+    const deckWithSteps = { slides: [{ ...jumpDeck.slides[0], children: [stepped({ id: 'd', layout: 'stack', title: 'D', steps: 2, layers: [{ label: 'L1' }, { label: 'L2' }], bodyHtml: '', notesHtml: '', children: [], stepLinks: [] })] }] as ResolvedSlide[] };
+    deckWithSteps.slides[0].stepLinks = [0, null, null];
+    const dive = jumpEntries(deckWithSteps).filter((e) => e.pos.sub !== null);
+    expect(dive.map((e) => [e.pos, e.label])).toEqual([
+      [{ slide: 0, step: 0, sub: 0, subStep: 0 }, 'D · L1'],
+      [{ slide: 0, step: 0, sub: 0, subStep: 1 }, 'D · L2'],
+    ]);
+  });
+});
+
+describe('filterJumpEntries', () => {
+  const entries = jumpEntries(jumpDeck);
+  it('returns everything for an empty query', () => {
+    expect(filterJumpEntries(entries, '   ')).toEqual(entries);
+  });
+  it('matches all terms case-insensitively against breadcrumb and label', () => {
+    expect(filterJumpEntries(entries, 'FIRMA').map((e) => e.label)).toEqual(['2018 · Firma A', 'Firma A Details']);
+    expect(filterJumpEntries(entries, 'weg firma').map((e) => e.label)).toEqual(['2018 · Firma A', 'Firma A Details']);
+    expect(filterJumpEntries(entries, 'weg daten')).toEqual([]);
+  });
+});
+
+describe('parseJumpInput', () => {
+  it('reads slide and step, 1-based', () => {
+    expect(parseJumpInput(jumpDeck, '2.2')).toEqual(at(1, 1));
+    expect(parseJumpInput(jumpDeck, '2')).toEqual(at(1, 0));
+    expect(parseJumpInput(jumpDeck, ' 1 : 3 ')).toEqual(at(0, 2));
+  });
+  it('clamps steps and rejects unknown slides and text', () => {
+    expect(parseJumpInput(jumpDeck, '1.9')).toEqual(at(0, 2));
+    expect(parseJumpInput(jumpDeck, '0')).toBeNull();
+    expect(parseJumpInput(jumpDeck, '9')).toBeNull();
+    expect(parseJumpInput(jumpDeck, 'firma')).toBeNull();
   });
 });

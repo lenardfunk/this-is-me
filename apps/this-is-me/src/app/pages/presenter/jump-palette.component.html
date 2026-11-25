@@ -1,0 +1,38 @@
+<div class="palette" role="dialog" aria-modal="true" aria-label="Zu einer Stelle springen">
+  <label class="search">
+    <span class="material-symbols-outlined" aria-hidden="true">search</span>
+    <input
+      type="text"
+      autocomplete="off"
+      placeholder="Folie, Station oder Vertiefung · oder 3.2"
+      aria-controls="jump-options"
+      [attr.aria-activedescendant]="options().length ? 'jump-option-' + active() : null"
+      [value]="query()"
+      (input)="onInput($event)"
+      (keydown)="onKey($event)"
+    />
+  </label>
+
+  <ul id="jump-options" class="options" role="listbox" aria-label="Stellen">
+    @for (entry of options(); track $index; let i = $index) {
+      <li
+        [id]="'jump-option-' + i"
+        role="option"
+        [class.active]="i === active()"
+        [attr.aria-selected]="i === active()"
+        (mouseenter)="active.set(i)"
+        (click)="choose(entry)"
+      >
+        <span class="crumb">{{ entry.path.join(' › ') }}</span>
+        <span class="label">{{ entry.label }}</span>
+        @if (isCurrent(entry)) {
+          <span class="now">aktuell</span>
+        }
+      </li>
+    } @empty {
+      <li class="empty">Keine Treffer</li>
+    }
+  </ul>
+
+  <p class="keys">↑ ↓ wählen · Enter springen · Esc schließen</p>
+</div>

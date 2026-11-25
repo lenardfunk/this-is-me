@@ -19,6 +19,7 @@ describe('actionForEvent', () => {
     expect(actionForEvent(key('B'))).toBe('blackout');
     expect(actionForEvent(key('Z'))).toBe('overview');
     expect(actionForEvent(key('?'))).toBe('help');
+    expect(actionForEvent(key('G'))).toBe('jump');
   });
   it('ignores modifier combinations and unknown keys', () => {
     expect(actionForEvent(key('p', { ctrlKey: true }))).toBeNull();

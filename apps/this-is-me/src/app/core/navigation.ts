@@ -120,6 +120,116 @@ export function axisBetween(from: Position, to: Position): 'x' | 'y' {
   return from.slide === to.slide && from.step === to.step && from.sub !== to.sub ? 'y' : 'x';
 }
 
+// ---- jump targets (presenter) ----------------------------------------------------------------
+// Every position the presenter can jump to. Steps of layouts that do not change visually with
+// their step are not offered: they would show the same slide.
+
+/** Layouts whose visuals change with `step`. */
+const STEPPED_LAYOUTS: ReadonlySet<ResolvedBlock['layout']> = new Set(['journey', 'stack']);
+
+export interface StepEntry {
+  /** Step index inside its block (main slide or deep dive). */
+  step: number;
+  label: string;
+}
+
+export interface DiveEntry {
+  /** Index into `slide.children`. */
+  sub: number;
+  title: string;
+  /** Step of the main slide the dive opens from (first matching `stepLinks` entry, else 0). */
+  linkStep: number;
+  steps: StepEntry[];
+}
+
+export interface SlideEntry {
+  slide: number;
+  title: string;
+  steps: StepEntry[];
+  dives: DiveEntry[];
+}
+
+/** One line of the jump palette: where it leads, its breadcrumb and its label. */
+export interface JumpEntry {
+  pos: Position;
+  path: string[];
+  label: string;
+}
+
+/** Steps of a block that are worth jumping to. Non-stepped layouts collapse to one entry. */
+export function visibleSteps(block: ResolvedBlock): StepEntry[] {
+  if (!STEPPED_LAYOUTS.has(block.layout)) return [{ step: 0, label: block.title }];
+  return Array.from({ length: block.steps }, (_, step) => ({ step, label: stepLabel(block, step) }));
+}
+
+function stepLabel(block: ResolvedBlock, step: number): string {
+  if (block.layout === 'journey') {
+    const station = block.stations[step - 1];
+    return station ? `${station.year} · ${station.title}` : 'Überblick';
+  }
+  if (block.layout === 'stack') {
+    // Mirrors StackLayout.visibleLayers: the layer revealed at this step is the last visible one.
+    const revealed = Math.min(block.layers.length, Math.ceil(((step + 1) / block.steps) * block.layers.length));
+    return block.layers[revealed - 1]?.label ?? block.title;
+  }
+  return block.title;
+}
+
+/** The whole deck as a tree: main slides with their steps, and their deep dives with their steps. */
+export function jumpTree(deck: Deck): SlideEntry[] {
+  return deck.slides.map((slide, index) => ({
+    slide: index,
+    title: slide.title,
+    steps: visibleSteps(slide),
+    dives: slide.children.map((child, sub) => ({
+      sub,
+      title: child.title,
+      linkStep: Math.max(0, slide.stepLinks.indexOf(sub)),
+      steps: visibleSteps(child),
+    })),
+  }));
+}
+
+/** Flat list for the jump palette, in deck order. */
+export function jumpEntries(deck: Deck): JumpEntry[] {
+  return jumpTree(deck).flatMap((s) => {
+    const own: JumpEntry[] =
+      s.steps.length > 1
+        ? s.steps.map((st) => ({ pos: main(s.slide, st.step), path: [s.title], label: st.label }))
+        : [{ pos: main(s.slide), path: [], label: s.title }];
+    const dives = s.dives.flatMap((d) =>
+      d.steps.map((st) => ({
+        pos: { slide: s.slide, step: d.linkStep, sub: d.sub, subStep: st.step },
+        path: [s.title],
+        label: d.steps.length > 1 ? `${d.title} · ${st.label}` : d.title,
+      })),
+    );
+    return [...own, ...dives];
+  });
+}
+
+/** Case-insensitive search: every whitespace-separated term must occur in the breadcrumb or label. */
+export function filterJumpEntries(entries: JumpEntry[], query: string): JumpEntry[] {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return entries;
+  return entries.filter((e) => {
+    const haystack = [...e.path, e.label].join(' ').toLowerCase();
+    return terms.every((t) => haystack.includes(t));
+  });
+}
+
+/**
+ * Numeric jump: `3` = slide 3, `3.2` = slide 3, step 2. Both are 1-based, as in the presenter's
+ * "Folie 3/7". Returns `null` if the text is not a numeric jump or the slide does not exist.
+ */
+export function parseJumpInput(deck: Deck, text: string): Position | null {
+  const match = /^\s*(\d+)(?:\s*[.,:]\s*(\d+))?\s*$/.exec(text);
+  if (!match) return null;
+  const slide = Number(match[1]) - 1;
+  if (slide < 0 || slide >= deck.slides.length) return null;
+  return goTo(deck, slide, match[2] ? Number(match[2]) - 1 : 0);
+}
+
 // ---- URL mapping -----------------------------------------------------------------------------
 // /d/:deck/:slide[/:sub]?s=<step>&ss=<subStep>   (slide/sub are block ids)
 

@@ -79,50 +79,16 @@
         }
       </section>
 
-      <section class="card dives">
-        <span class="label">Vertiefungen</span>
-        @if (slide(); as s) {
-          @if (s.children.length) {
-            <ul>
-              @for (child of s.children; track child.id; let i = $index) {
-                <li>
-                  <button mat-button [class.active]="isDeepDiveActive(i)" (click)="store.goToSub(i)">
-                    <mat-icon fontSet="material-symbols-outlined">arrow_downward</mat-icon>
-                    {{ child.title }}
-                  </button>
-                </li>
-              }
-            </ul>
-            @if (inDeepDive()) {
-              <button mat-stroked-button (click)="closeDeepDive()">
-                <mat-icon fontSet="material-symbols-outlined">arrow_upward</mat-icon>
-                Zurück zur Hauptfolie
-              </button>
-            }
-          } @else {
-            <p class="note">Keine Vertiefungen auf dieser Folie.</p>
-          }
-        }
-      </section>
-
       <section class="card progress">
-        <span class="label">Fortschritt</span>
+        <div class="card-head">
+          <span class="label">Springen</span>
+          <button mat-stroked-button type="button" matTooltip="Zu einer Stelle springen (G)" (click)="openJump()">
+            <mat-icon fontSet="material-symbols-outlined">search</mat-icon>
+            Suchen · G
+          </button>
+        </div>
         <mat-progress-bar mode="determinate" [value]="store.progress() * 100" />
-        <ol class="segments">
-          @for (s of deck.slides; track s.id; let i = $index) {
-            <li>
-              <button
-                type="button"
-                [class.current]="isCurrent(i)"
-                [class.done]="i < store.position().slide"
-                [matTooltip]="s.title"
-                [attr.aria-label]="'Zu Folie ' + (i + 1) + ': ' + s.title"
-                [attr.aria-current]="isCurrent(i) ? 'step' : null"
-                (click)="store.goTo(i)"
-              ></button>
-            </li>
-          }
-        </ol>
+        <app-slide-strip [tree]="store.jumpTree()" [position]="store.position()" (jump)="store.jumpTo($event)" />
       </section>
     </aside>
   </div>
@@ -138,5 +104,5 @@
     </div>
   }
 } @else {
-  <app-deck-status [status]="store.status()" [deckId]="deckId()" />
+  <app-deck-status [status]="store.status()" />
 }

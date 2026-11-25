@@ -14,6 +14,8 @@ export class DeckStore {
   readonly direction = signal<1 | -1 | 0>(0);
   /** Axis of the last position change: `y` for deep dives (↓ / ↑), `x` along the main line. */
   readonly axis = signal<'x' | 'y'>('x');
+  /** How the last position change happened: a step (↓ ↑ → ←) or a jump from the presenter's list. */
+  readonly lastChange = signal<'step' | 'jump'>('step');
 
   private readonly resource = httpResource<ResolvedDeck>(() => {
     const id = this.deckId();
@@ -54,6 +56,12 @@ export class DeckStore {
     return target ? nav.stepOf(target) : 0;
   });
 
+  /** Every slide with its visible steps and deep dives; drives the presenter's slide strip and jump palette. */
+  readonly jumpTree = computed(() => {
+    const deck = this.deck();
+    return deck ? nav.jumpTree(deck) : [];
+  });
+
   /** 0..1 over all main slides and their steps. */
   readonly progress = computed(() => {
     const deck = this.deck();
@@ -71,14 +79,20 @@ export class DeckStore {
     this.blackout.set(false);
   }
 
-  setPosition(pos: Position) {
+  setPosition(pos: Position, change: 'step' | 'jump' = 'step') {
     const deck = this.deck();
     const target = deck ? nav.clampPosition(deck, pos) : pos;
     const current = this.position();
     if (samePosition(target, current)) return;
     this.direction.set(directionBetween(current, target));
     this.axis.set(axisBetween(current, target));
+    this.lastChange.set(change);
     this.position.set(target);
+  }
+
+  /** Jump to any position (presenter list). Unlike a step, a jump does not start the presenter timer. */
+  jumpTo(pos: Position) {
+    this.setPosition(pos, 'jump');
   }
 
   next() {
