@@ -87,7 +87,8 @@ describe('formatJson', () => {
       path.join(demoDeck, 'deck.json'),
     ];
     for (const file of files) {
-      const source = fs.readFileSync(file, 'utf8');
+      // Git stores these files with LF; a Windows checkout with core.autocrlf turns them into CRLF.
+      const source = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
       assert.equal(`${formatJson(JSON.parse(source))}\n`, source, file);
     }
   });
