@@ -31,6 +31,11 @@ Decks pro Firma).
 - UI-Texte und Inhalte auf Deutsch; Code, Bezeichner und Commit-Messages auf Englisch.
 - Inhalte liegen in `content/` (Markdown + JSON), Medien in `public/media/`.
   `public/generated/` wird vom Content-Build erzeugt und nie von Hand bearbeitet.
+- **Das Repo ist öffentlich gedacht, die echten Inhalte sind privat:** `content/blocks/`, alle
+  `content/decks/*` außer `content/decks/demo/`, `content/site.json` und `public/media/uploads/` stehen in
+  der `.gitignore`. Im Repo liegt nur das eigenständige Demo-Deck (eigene Blöcke, nur Platzhalter-Medien).
+  Echte Namen, Firmen oder Fotos gehören nie in getrackte Dateien, auch nicht in Tests oder Fixtures;
+  Tests nutzen `scripts/fixtures/` und `apps/slide-creator/server/fixtures/`.
 - Folien werden auf einer festen 1600×900-px-Fläche gestaltet (keine vw/vh in Folien).
 - Angular Material nur in der Präsentator-Ansicht; Folien und Hub haben eigenes CSS.
 - Kein IDE- oder Terminal-Look.

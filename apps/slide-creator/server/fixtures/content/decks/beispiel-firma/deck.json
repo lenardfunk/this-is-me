@@ -1,0 +1,7 @@
+{
+  "id": "beispiel-firma",
+  "extends": "default",
+  "title": "Bewerbung Beispiel GmbH",
+  "company": { "name": "Beispiel GmbH", "accent": "#0F6E56" },
+  "overrides": { "hallo": { "subtitle": "Full-Stack-Entwicklerin mit Fintech-Erfahrung" } }
+}

@@ -7,11 +7,16 @@ Entscheidungen sind getroffen – nicht neu diskutieren. Wo etwas offen ist, ste
 
 ---
 
-## Stand (2026-11-24)
+## Stand (2026-11-25)
 
 - **Phasen 0–7 sind umgesetzt** (Build und Tests grün, im Browser gegen die Akzeptanzkriterien geprüft).
   Das Default-Deck ist mit Platzhalter-Inhalten komplett präsentierbar.
-- **Deployment-Entscheidung (2026-11-24):** privates GitHub-Repo, Hosting auf **Vercel (Hobby)**.
+- **Repo-Entscheidung (2026-11-25):** Das GitHub-Repo soll **öffentlich** werden, die echten Inhalte
+  nicht. `content/blocks/`, `content/decks/*` (außer `demo`), `content/site.json` und `public/media/uploads/`
+  stehen in der `.gitignore`; im Repo liegt nur das eigenständige **Demo-Deck** `content/decks/demo/`
+  (eigene Blöcke, nur Platzhalter-Medien). Tests laufen gegen Fixtures. Offen: wie die privaten Decks zu
+  Vercel kommen und die bisherige Git-Historie (Abschnitt 5, Punkt 1).
+- **Deployment-Entscheidung (2026-11-24):** Hosting auf **Vercel (Hobby)**.
   Jedes Deck wird unter einer **unratbaren UUID** veröffentlicht (eine UUID pro Bewerbung); es gibt
   keine öffentliche Startseite und keine Deck-Liste. Das Standard-Deck ist nur **Vorlage** und wird
   nicht veröffentlicht. `/` und `/d` zeigen „nicht gefunden". Details: Abschnitt 2.5, Phase 8 und 9.
@@ -51,7 +56,7 @@ modernes Angular).
   **kein** IDE-/Terminal-Look.
 - **Visueller Stil**: hell, warm, editorial. Serifen-Headlines (Fraunces), Sans-Fließtext (Inter),
   viel Weißraum, **eine** Akzentfarbe (pro Firma überschreibbar). Keine Admin-Panel-Optik.
-- Offline/PWA: **nicht** nötig. Deployment auf **Vercel**, Quelle in einem **privaten** Repo
+- Offline/PWA: **nicht** nötig. Deployment auf **Vercel**, die echten Inhalte bleiben privat
   (siehe 2.5). Kein öffentlicher Einstieg: jedes Deck ist nur über seinen UUID-Link erreichbar.
 
 **Hauptpfad (Standard-Deck)**, ~5 Min:
@@ -292,8 +297,9 @@ Weg dorthin. Das ist kein Passwortschutz, Weiterleitungen des Links sind möglic
   `/presenter/<uuid>`. **Eine UUID pro Bewerbung**, nicht pro Firma.
 - **Kein Einstieg**: `/`, `/d` und alle unbekannten Pfade zeigen „nicht gefunden"; es gibt weder
   Deck-Liste noch `index.json`. Das Standard-Deck ist Vorlage und hat keine `publication`.
-- **Quelle bleibt privat** (privates GitHub-Repo, Vercel baut daraus). Die Registry (UUID, Notiz,
-  Ablauf) steht in den `deck.json`-Dateien im privaten Repo. Ein öffentliches Repo würde alles verraten.
+- **Die echten Inhalte bleiben privat.** Die Registry (UUID, Notiz, Ablauf) steht in den `deck.json`-Dateien
+  der privaten Decks, die per `.gitignore` nicht ins (öffentliche) Repo gelangen. Landeten sie in einem
+  öffentlichen Repo, wären alle UUIDs und Firmennamen sichtbar und die UUID-Pfade wertlos.
 - **Widerruf/Rotation**: UUID neu erzeugen bzw. `revoked` setzen; mit dem nächsten Deploy ist der alte
   Link tot (die Datei `<uuid>.json` existiert dann nicht mehr).
 - **Hygiene**: `noindex` (Meta-Tag und `X-Robots-Tag`-Header), `Referrer-Policy: no-referrer`,
@@ -522,11 +528,12 @@ Hintergrund und Schutzmodell: Abschnitt 2.5.
 3. **App**: `/`, `/d` und `**` zeigen „nicht gefunden" (kein Redirect auf ein Standard-Deck); der
    Fehlerzustand eines Decks hat keinen Link mehr. `<meta name="robots" content="noindex">` und
    `<meta name="referrer" content="no-referrer">` in `index.html`.
-4. **Vercel** (macht der User, Anleitung in `README.md`): privates Repo im **persönlichen** GitHub-Account,
-   Vercel-Hobby-Account mit GitHub verbinden, Projekt importieren. `vercel.json` im Repo setzt Build-Befehl
-   (`npm run build`; der Content-Build läuft dabei automatisch im Produktionsmodus), Output-Ordner, SPA-Rewrite (nicht für `generated/` und
+4. **Vercel** (macht der User): `vercel.json` im Repo setzt Build-Befehl (`npm run build`; der Content-Build
+   läuft dabei automatisch im Produktionsmodus), Output-Ordner, SPA-Rewrite (nicht für `generated/` und
    `media/`, damit unbekannte JSON-Dateien ein echtes 404 liefern) und die Header
-   (`X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`). Jeder Push auf den Hauptzweig deployt.
+   (`X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`). **Wie die privaten Decks zu Vercel kommen,
+   ist offen** (Abschnitt 5, Punkt 1): Sie liegen nicht im öffentlichen Repo, ein Git-Deploy kann sie also
+   nicht bauen.
 
 **Akzeptanz:** `npm run content:production` erzeugt nur `decks/<uuid>.json` der veröffentlichten Decks
 (Test in `scripts/build-content.test.ts`); `/`, `/d` und `/d/default` zeigen „nicht gefunden"; `/d/<uuid>`
@@ -562,8 +569,11 @@ API: `GET /api/publications`, `PUT /api/decks/:id/publication` (`action: publish
 
 ## 5. Offene Punkte (den User fragen, wenn relevant)
 
-1. ~~Firmen-Decks öffentlich?~~ **Entschieden (2026-11-24):** privates Repo, Vercel, UUID-Pfad pro
-   Bewerbung, Standard-Deck nicht veröffentlicht (Abschnitt 2.5).
+1. **Deploy-Weg und Historie** (öffentliches Repo ohne echte Inhalte): Entschieden sind Vercel, UUID-Pfad pro
+   Bewerbung und Standard-Deck nicht veröffentlicht (2.5). Offen: (a) wie die privaten Decks zu Vercel
+   kommen (lokal per Vercel-CLI mit vorgebautem Output, oder ein zweites privates Repo, aus dem Vercel baut),
+   (b) die bisherigen Commits enthalten die privaten Inhalte noch; vor dem ersten Push ins öffentliche Repo
+   Historie bereinigen oder mit einem frischen Anfangs-Commit starten.
 2. Echte Inhalte: Stationen (Jahr, Titel, 2–3 Stichworte), zwei Projekte mit Bild + Kennzahl,
    Porträt + Rückseitenfoto, 2–4 „Mensch"-Fotos, Tech-Stack pro Schicht.
 3. Positionen der Stationen auf dem Foto ggf. nach echten Inhalten feinjustieren (Prototyp hat

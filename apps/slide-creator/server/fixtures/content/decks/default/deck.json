@@ -1,0 +1,6 @@
+{
+  "id": "default",
+  "title": "Vorstellung",
+  "durationMinutes": 5,
+  "slides": ["hallo", "projekt-b", "mensch", "warum-ihr"]
+}

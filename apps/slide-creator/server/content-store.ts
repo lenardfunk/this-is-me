@@ -231,7 +231,8 @@ export class ContentStore {
 
   /**
    * Git view of the deck files: which `deck.json` have uncommitted changes, which commits are not
-   * pushed yet. `undefined` outside a git checkout (or without git); then no deploy state is shown.
+   * pushed yet. Only tracked decks appear. `undefined` outside a git checkout (or without git);
+   * then no deploy state is shown.
    */
   private deployStates(): Map<string, DeployState> | undefined {
     const cwd = path.dirname(this.paths.contentDir);
@@ -241,6 +242,11 @@ export class ContentStore {
     try {
       const dir = path.relative(cwd, path.join(this.paths.contentDir, 'decks')).split(path.sep).join('/');
       const states = new Map<string, DeployState>();
+      // decks that git does not track (e.g. the gitignored private ones) have no deploy state at all
+      for (const line of git('ls-files', '--', dir).split('\n')) {
+        const id = deckOf(line);
+        if (id) states.set(id, 'synced');
+      }
       let unpushed: string[] = [];
       try {
         unpushed = git('diff', '--name-only', '@{upstream}..HEAD', '--', dir).split('\n');
@@ -282,7 +288,7 @@ export class ContentStore {
         accent: deck.company?.accent,
         state: publicationState(deck.publication, today),
         ...(deck.publication ? { publication: deck.publication } : {}),
-        ...(deck.publication && deploy ? { deploy: deploy.get(id) ?? 'synced' } : {}),
+        ...(deck.publication && deploy?.has(id) ? { deploy: deploy.get(id) } : {}),
       });
     }
     return { baseUrl: this.readBaseUrl(), items };

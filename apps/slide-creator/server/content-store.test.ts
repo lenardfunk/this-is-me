@@ -7,14 +7,17 @@ import { parseBlockSource } from '../../../scripts/build-content.ts';
 import { ContentStore, formatJson, serializeBlock, StoreError } from './content-store.ts';
 
 const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..');
-const realContent = path.join(repoRoot, 'content');
+// The real content/ is private and not in the repository (only the demo deck is), so the store is
+// tested against a small fixture: a template deck, a child deck with its own block, a block library.
+const fixtureContent = path.join(import.meta.dirname, 'fixtures', 'content');
+const demoDeck = path.join(repoRoot, 'content', 'decks', 'demo');
 
 let tmp: string;
 let store: ContentStore;
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tim-creator-'));
-  fs.cpSync(realContent, path.join(tmp, 'content'), { recursive: true });
+  fs.cpSync(fixtureContent, path.join(tmp, 'content'), { recursive: true });
   fs.mkdirSync(path.join(tmp, 'public', 'media'), { recursive: true });
   store = new ContentStore({
     contentDir: path.join(tmp, 'content'),
@@ -33,8 +36,8 @@ function blockFiles(dir: string): string[] {
 }
 
 describe('serializeBlock', () => {
-  it('round-trips every block in content/ without losing data', () => {
-    for (const file of blockFiles(realContent)) {
+  it('round-trips every fixture and demo block without losing data', () => {
+    for (const file of [...blockFiles(fixtureContent), ...blockFiles(demoDeck)]) {
       const raw = parseBlockSource(fs.readFileSync(file, 'utf8'));
       const again = parseBlockSource(serializeBlock(raw.frontmatter, raw.body, raw.notes));
       assert.deepEqual(again.frontmatter, raw.frontmatter, file);
@@ -78,8 +81,12 @@ describe('serializeBlock', () => {
 
 describe('formatJson', () => {
   it('reproduces the hand-written deck files', () => {
-    for (const id of ['default', 'beispiel-firma']) {
-      const file = path.join(realContent, 'decks', id, 'deck.json');
+    const files = [
+      path.join(fixtureContent, 'decks', 'default', 'deck.json'),
+      path.join(fixtureContent, 'decks', 'beispiel-firma', 'deck.json'),
+      path.join(demoDeck, 'deck.json'),
+    ];
+    for (const file of files) {
       const source = fs.readFileSync(file, 'utf8');
       assert.equal(`${formatJson(JSON.parse(source))}\n`, source, file);
     }

@@ -32,7 +32,7 @@ export interface PublicationInfo {
   accent?: string;
   state: PublicationState;
   publication?: Publication;
-  /** Only known inside a git checkout; undefined for decks that were never published. */
+  /** Only known for published decks that git tracks; private (gitignored) decks have none. */
   deploy?: DeployState;
 }
 

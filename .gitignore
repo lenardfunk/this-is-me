@@ -50,3 +50,11 @@ Thumbs.db
 /.nx/cache
 /.nx/workspace-data
 .angular
+
+# Private content: own decks, the shared block library and uploaded photos.
+# Only the demo deck (content/decks/demo) and the placeholder media are public.
+/content/blocks/
+/content/decks/*
+!/content/decks/demo/
+/content/site.json
+/public/media/uploads/

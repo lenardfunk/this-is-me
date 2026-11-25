@@ -1,0 +1,14 @@
+{
+  "id": "demo",
+  "title": "Demo",
+  "durationMinutes": 5,
+  "company": { "name": "Beispiel GmbH", "accent": "#534AB7" },
+  "slides": [
+    "hallo",
+    { "id": "weg", "children": ["firma-a-details"] },
+    { "id": "heute", "children": ["diese-app"] },
+    "projekt",
+    "galerie",
+    "schluss"
+  ]
+}

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { LAYOUTS } from '../libs/content/src/lib/content.schema.ts';
 import { buildContent, ContentError, deepMerge, publicationState } from './build-content.ts';
 
 const fixtures = path.join(import.meta.dirname, 'fixtures');
@@ -139,6 +140,30 @@ describe('publication', () => {
   it('rejects a public id that two decks share', () => {
     const problems = problemsOf('err-duplicate-publication').join('\n');
     assert.match(problems, /publication\.id is already used by deck "a"/);
+  });
+});
+
+describe('demo deck', () => {
+  const root = path.resolve(import.meta.dirname, '..');
+
+  // content/ is private except for the demo deck, so the demo must stand on its own
+  it('builds on its own, uses every layout and only references media that is in the repository', () => {
+    const contentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tim-demo-'));
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tim-demo-out-'));
+    try {
+      fs.cpSync(path.join(root, 'content', 'decks', 'demo'), path.join(contentDir, 'decks', 'demo'), { recursive: true });
+      const warnings: string[] = [];
+      const { decks } = buildContent({ contentDir, outDir, publicDir: path.join(root, 'public'), warn: (m) => warnings.push(m) });
+      assert.deepEqual(decks.map((d) => d.id), ['demo']);
+      assert.deepEqual(warnings, []);
+      const layouts = new Set(decks[0].slides.flatMap((s) => [s.layout, ...s.children.map((c) => c.layout)]));
+      for (const layout of LAYOUTS) assert.ok(layouts.has(layout), `demo deck has no "${layout}" slide`);
+      const uploads = JSON.stringify(decks[0]).match(/media\/uploads\/[^"]*/g);
+      assert.equal(uploads, null, 'the demo deck must not use private uploads');
+    } finally {
+      fs.rmSync(contentDir, { recursive: true, force: true });
+      fs.rmSync(outDir, { recursive: true, force: true });
+    }
   });
 });
 
